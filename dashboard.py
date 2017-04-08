@@ -1,2 +1,5 @@
-global legal_area = "abortion" // "abortion"
-global lawvar "proplaintiff"
+
+#List of Global Variables
+
+legal_area = "evironment"
+lawvar = "proplaintiff"
