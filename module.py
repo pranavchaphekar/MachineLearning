@@ -1,6 +1,7 @@
 import pickle
 import pandas as pd
 import sys
+from dashboard import *
 
 
 def read_and_process_vote_level_data(case_ids):
@@ -30,4 +31,20 @@ def read_environmental_law_indicator():
 
 
 # read_environmental_law_indicator()
-read_and_process_vote_level_data(read_environmental_law_indicator())
+#read_and_process_vote_level_data(read_environmental_law_indicator())
+
+
+
+def lvl_circuityear():
+    df = pd.read_csv("filtered.csv",low_memory=False)
+    print(list(df.columns.values))
+    #df.loc["panelvote" in (2,3),"proplaintiff"] =1
+    #df.loc["panelvote" in (0, 1), "proplaintiff"] = 0
+    #df.loc["protaking" is 1, "proplaintiff"] = 0
+    #df.loc["protaking" is 0, "proplaintiff"] = 1
+    #gen numCasesPro = ${lawvar}
+    #gen numCasesAnti = 1-${lawvar}
+    #encode case_ID, generate(numCases)
+    #rename nr_Judges numJudges
+
+lvl_circuityear()
