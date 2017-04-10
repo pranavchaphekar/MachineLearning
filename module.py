@@ -2,6 +2,7 @@ import pickle
 import pandas as pd
 import sys
 import numpy as np
+from sklearn.linear_model import LinearRegression
 
 
 def read_and_process_vote_level_data(case_ids):
@@ -100,9 +101,19 @@ def lvl_panel():
     grouped = grouped[filter_col].apply(lambda x: (x == 1).sum()/len(x))
     grouped.to_csv('data/result_panel.csv')
 
+
+def regress():
+    df = pd.read_csv('data/result_judge.csv', low_memory=False)  # load into the data frame
+    filter_col = [col for col in list(df) if col.startswith('x_')]
+    linear_reg = LinearRegression(normalize=True)
+    linear_reg.fit(df[['x_dem', 'x_nonwhite']], df['govt_wins'])
+    result = pd.DataFrame(list(zip(['x_dem', 'x_nonwhite'], linear_reg.coef_)), columns=['features', 'coefficients'])
+    print(result, linear_reg.score(df[['x_dem', 'x_nonwhite']], df['govt_wins']))
+
 # read_environmental_law_indicator()
 # read_and_process_vote_level_data(read_environmental_law_indicator())
 # cleaned_CSV()
 # add_X_col()
-lvl_judge()
-lvl_panel()
+# lvl_judge()
+# lvl_panel()
+regress()
