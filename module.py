@@ -103,12 +103,20 @@ def lvl_panel():
 
 
 def regress():
-    df = pd.read_csv('data/result_judge.csv', low_memory=False)  # load into the data frame
-    filter_col = [col for col in list(df) if col.startswith('x_')]
+    df = pd.read_csv('data/result_panel.csv', low_memory=False)  # load into the data frame
+    # filter_col = [col for col in list(df) if col.startswith('x_')]
+    filter_col = ['x_dem', 'x_nonwhite']
+    target = 'govt_wins'
     linear_reg = LinearRegression(normalize=True)
-    linear_reg.fit(df[['x_dem', 'x_nonwhite']], df['govt_wins'])
-    result = pd.DataFrame(list(zip(['x_dem', 'x_nonwhite'], linear_reg.coef_)), columns=['features', 'coefficients'])
-    print(result, linear_reg.score(df[['x_dem', 'x_nonwhite']], df['govt_wins']))
+    linear_reg.fit(df[filter_col], df[target])
+    result = pd.DataFrame(list(zip(filter_col, linear_reg.coef_)), columns=['features', 'coefficients'])
+    expected = df['govt_wins']
+    predicted = linear_reg.predict(df[filter_col])
+    print(result)
+    print()
+    print('Intercept: ' + str(linear_reg.intercept_))
+    print('R-sq: ' + str(linear_reg.score(df[filter_col], df[target])))
+    print('mse: ' + str(np.mean((predicted-expected)**2)))
 
 def lvl_circuityear():
     df = pd.read_csv("data/filtered.csv",low_memory=False)
