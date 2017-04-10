@@ -2,4 +2,4 @@
 #List of Global Variables
 
 legal_area = "evironment"
-lawvar = "proplaintiff"
+lawvar = "govt_wins"

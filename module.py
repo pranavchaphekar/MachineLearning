@@ -2,6 +2,7 @@ import pickle
 import pandas as pd
 import sys
 import numpy as np
+from dashboard import *
 
 def read_and_process_vote_level_data(case_ids):
     reader = pd.read_stata('BloombergVOTELEVEL_Touse.dta', iterator=True)
@@ -53,7 +54,7 @@ def gen_inter(main_df, df1, df2,df1_col_name, df2_col_name):
 
 
 def lvl_judge():
-    df = pd.read_csv('/Users/pranavchaphekar/Documents/MLProject/MachineLearning/filtered.csv',low_memory=False) #load into the data frame
+    df = pd.read_csv('filtered.csv',low_memory=False) #load into the data frame
     features_to_be_kept = ['caseid','year','Circuit','month','songername','x_dem','x_republican','x_instate_ba','x_aba','x_protestant','x_evangelical','x_noreligion','x_catholic','x_jewish','x_black','x_nonwhite'
 ,'x_female'] #keep only the limited set of variables (handpicked ones)
     df_lvl_judge = df[features_to_be_kept] #creates a new data frame with only few handpicked features
@@ -82,7 +83,7 @@ def lvl_judge():
     #Order of elements, Sorting
     sort_order = ['Circuit','year','month']
     #Sorting by the column enteries and store that in result dataframe
-    #result = df1.sort(['Circuit'])
+    #result = df1.sort_values(['Circuit'])
 
 
 # read_environmental_law_indicator()
@@ -95,11 +96,51 @@ lvl_judge()
 def lvl_circuityear():
     df = pd.read_csv("filtered.csv",low_memory=False)
     print(list(df.columns.values))
-    #df.loc["panelvote" in (2,3),"proplaintiff"] =1
-    #df.loc["panelvote" in (0, 1), "proplaintiff"] = 0
-    #df.loc["protaking" is 1, "proplaintiff"] = 0
-    #df.loc["protaking" is 0, "proplaintiff"] = 1
-    #gen numCasesPro = ${lawvar}
-    #gen numCasesAnti = 1-${lawvar}
-    #encode case_ID, generate(numCases)
-    #rename nr_Judges numJudges
+
+    X_star = []
+    E_star = []
+    for col in list(df.columns.values):
+        if str(col).lower().startswith('x_'):
+            X_star.append(str(col))
+        elif str(col).lower().startswith('e_'):
+            E_star.append(str(col))
+
+    ##PANELVOTE & PROTAKING Columns Currently not There!!!!!!
+    #df[df.panelvote in (2,3)]['proplaintiff'] = 1
+    #df[df.protaking == 1]['proplaintiff'] = 0
+    #df[df.protaking == 0]['proplaintiff'] = 1
+
+    print(list(df.columns.values))
+
+    #Generating and renaming variables so that they have appropriate names after collapsing gen
+    df.rename(columns={lawvar:'numCasesPro','caseid' :'numCases'}, inplace=True)
+
+    df['numCasesAnti'] = 1 - df[lawvar]
+
+    sort_order = ['Circuit', 'year']
+    # Sorting by the column enteries and store that in result dataframe
+    df = df.sort_values(sort_order)
+    df.fillna(df.mean())
+    #df[df.numCases == 0]['present'] = 1
+
+    # Define a lambda function to compute the weighted mean:
+    wMean = lambda x: np.average(x)
+    f = {'numCases': ['count'],'numJudges':['sum'],'numCasesPro':['sum'],'numCasesAnti':['sum']}
+    df.groupby(["Circuit", "year"]).agg(f)
+
+    '''
+    qui collapse(count) numCases(sum) numJudges numCasesPro numCasesAnti(mean) x_ * E_ * proplaintiff protaking, by(circuit,year)
+
+    df.groupby("subid", sort=True).sum()
+
+    # Define a lambda function to compute the weighted mean:
+    wMean = lambda x: np.average(x)
+
+    # Define a dictionary with the functions to apply for a given column:
+    f = {'numCases': ['count'],'numJudges':['sum'],'numCasesPro':['sum'],'numCasesAnti':['sum']}
+
+    # Groupby and aggregate with your dictionary:
+    df.groupby(["contract", "month", "year", "buys"]).agg(f)
+    '''
+
+lvl_circuityear()
