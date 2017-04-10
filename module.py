@@ -3,7 +3,7 @@ import pandas as pd
 import sys
 import numpy as np
 from sklearn.linear_model import LinearRegression
-
+from dashboard import *
 
 def read_and_process_vote_level_data(case_ids):
     reader = pd.read_stata('BloombergVOTELEVEL_Touse.dta', iterator=True)
@@ -110,10 +110,58 @@ def regress():
     result = pd.DataFrame(list(zip(['x_dem', 'x_nonwhite'], linear_reg.coef_)), columns=['features', 'coefficients'])
     print(result, linear_reg.score(df[['x_dem', 'x_nonwhite']], df['govt_wins']))
 
+def lvl_circuityear():
+    df = pd.read_csv("data/filtered.csv",low_memory=False)
+    df = pd.merge(df, read_environmental_law_indicator(), on='caseid')
+    
+    X_star = []
+    E_star = []
+    for col in list(df.columns.values):
+        if str(col).lower().startswith('x_'):
+            X_star.append(str(col))
+        elif str(col).lower().startswith('e_'):
+            E_star.append(str(col))
+
+    ##PANELVOTE & PROTAKING Columns Currently not There!!!!!!
+    #df[df.panelvote in (2,3)]['proplaintiff'] = 1
+    #df[df.protaking == 1]['proplaintiff'] = 0
+    #df[df.protaking == 0]['proplaintiff'] = 1
+
+    print(list(df.columns.values))
+
+    #Generating and renaming variables so that they have appropriate names after collapsing gen
+    #df.rename(columns={lawvar:'numCasesPro','caseid' :'numCases'}, inplace=True)
+
+    df['numCasesPro'] = df[lawvar]
+    df['numCases'] = 1
+    df['numCasesAnti'] = 1 - df[lawvar]
+    
+    sort_order = ['Circuit', 'year']
+    # Sorting by the column enteries and store that in result dataframe
+    df = df.sort_values(sort_order)
+    df.fillna(df.mean())
+    #df[df.numCases == 0]['present'] = 1
+    
+    # Define a lambda function to compute the weighted mean:
+    meanFun = lambda x: np.average(x)
+    f = {}
+    for col in X_star:
+        f[col] = meanFun
+
+    df = df.groupby(["Circuit", "year",'numCases','numCasesAnti','numCasesPro']).agg(f)
+    #df = df.sort_values(sort_order)
+
+    #Adding a NewColumn for Clustering CircuitXYear
+    #df['circuitXyear'] = df.Circuit.astype(str).str.cat(df.year.astype(str), sep='X')
+
+    df.to_csv('result_lvlcircuit.csv')
+
+
 # read_environmental_law_indicator()
 # read_and_process_vote_level_data(read_environmental_law_indicator())
 # cleaned_CSV()
 # add_X_col()
 # lvl_judge()
 # lvl_panel()
+#lvl_circuityear()
 regress()
