@@ -167,6 +167,7 @@ def fit_stat_model(train, test):
     convert_textfile(model)
     return model
 
+
 def convert_textfile(model):
     '''
 
@@ -176,6 +177,7 @@ def convert_textfile(model):
     f = open('outputfiles/ols_output.txt', "w")
     f.write(str(model.summary()))
     f.close()
+
 
 def test_stat_model(model, insample, outsample):
     '''
@@ -197,8 +199,8 @@ def test_stat_model(model, insample, outsample):
 
 
 def lvl_circuityear():
-    df = pd.read_csv("data/filtered.csv", low_memory=False)
-    df = pd.merge(df, read_environmental_law_indicator(), on='caseid')
+    df = pd.read_csv("data/result_panel.csv", low_memory=False)
+    # df = pd.merge(df, read_environmental_law_indicator(), on='caseid')
 
     X_star = []
     E_star = []
@@ -213,7 +215,7 @@ def lvl_circuityear():
     # df[df.protaking == 1]['proplaintiff'] = 0
     # df[df.protaking == 0]['proplaintiff'] = 1
 
-    print(list(df.columns.values))
+    print(list(df))
 
     # Generating and renaming variables so that they have appropriate names after collapsing gen
     # df.rename(columns={lawvar:'numCasesPro','caseid' :'numCases'}, inplace=True)
@@ -230,17 +232,24 @@ def lvl_circuityear():
 
     # Define a lambda function to compute the weighted mean:
     meanFun = lambda x: np.average(x)
+    sumFun = lambda x: (x == 1).sum()
+    lenFun = lambda x: len(x)
+
     f = {}
+    f['numCases'] = sumFun
+    f['numCasesAnti'] = sumFun
+    f['numCasesPro'] = sumFun
+    f['govt_wins'] = sumFun
     for col in X_star:
         f[col] = meanFun
 
-    df = df.groupby(["Circuit", "year", 'numCases', 'numCasesAnti', 'numCasesPro']).agg(f)
+    df = df.groupby(["Circuit", "year"]).agg(f)
     # df = df.sort_values(sort_order)
 
     # Adding a NewColumn for Clustering CircuitXYear
     # df['circuitXyear'] = df.Circuit.astype(str).str.cat(df.year.astype(str), sep='X')
 
-    df.to_csv('result_lvlcircuit.csv')
+    df.to_csv('data/result_lvlcircuit.csv')
 
 
 # This function splits the file into test and train data
@@ -261,7 +270,7 @@ def split_into_train_and_test():
 # lvl_judge()
 lvl_panel()
 # split_into_train_and_test()
-# lvl_circuityear()
+lvl_circuityear()
 # train, test = split_into_train_and_test()
 # # regress(train, test)
 # model = fit_stat_model(train, test)
