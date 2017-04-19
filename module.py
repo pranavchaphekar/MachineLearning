@@ -8,7 +8,6 @@ from dashboard import *
 def read_and_process_vote_level_data(case_ids):
     reader = pd.read_stata('BloombergVOTELEVEL_Touse.dta', iterator=True)
     df = pd.DataFrame()
-    print("Hello")
 
     try:
         chunk = reader.get_chunk(1000)
