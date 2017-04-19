@@ -1,15 +1,18 @@
 import pickle
-import stat
-
 import pandas as pd
 import sys
 import numpy as np
 from sklearn.linear_model import LinearRegression
 from dashboard import *
-from statsmodels.formula.api import ols
 import statsmodels.api as sm
 
 def read_and_process_vote_level_data(case_ids):
+
+    '''
+    :param case_ids: Takes the case ids which are related to the environments
+    :return: A csv file conatining the subset of the original data
+    '''
+
     reader = pd.read_stata('data/BloombergVOTELEVEL_Touse.dta', iterator=True)
     df = pd.DataFrame()
 
@@ -29,6 +32,10 @@ def read_and_process_vote_level_data(case_ids):
 
 
 def read_environmental_law_indicator():
+    '''
+    
+    :return: 
+    '''
     df = pickle.load(open('data/govt_winner.pkl', 'rb'))
     environ_cases = df[df['govt_environ'] == 1]
     environ_cases = environ_cases[['caseid', 'govt_wins']]
@@ -36,6 +43,10 @@ def read_environmental_law_indicator():
 
 
 def cleaned_CSV():
+    '''
+    
+    :return: 
+    '''
     df = pd.read_csv('filtered.csv', low_memory=False)
     # read the handpicked attributes from a file into a list
     features = []
@@ -48,14 +59,26 @@ def cleaned_CSV():
     lines_subset.to_csv('filtered_subset.csv')
 
 
-def add_X_col():  # adds the govt wins col.
+def add_X_col():
+    '''
+    
+    :return: 
+    '''
     df = pd.read_csv('filtered_subset.csv')
     df = pd.merge(df, read_environmental_law_indicator(), on='caseid')
     df.to_csv('add_X_col.csv')
 
 
-# A function that creates the interactions
 def gen_inter(main_df, df1, df2, df1_col_name, df2_col_name):
+    '''
+    
+    :param main_df: 
+    :param df1: 
+    :param df2: 
+    :param df1_col_name: 
+    :param df2_col_name: 
+    :return: 
+    '''
     name_of_dataframe = df1_col_name + ' X ' + df2_col_name
     main_df[name_of_dataframe] = df1 * df2
     return main_df
@@ -129,7 +152,6 @@ def fit_stat_model():
     df = pd.read_csv('data/result_panel_train.csv', low_memory=False)
     filter_col = ['x_dem', 'x_nonwhite','x_noreligion']
     target = 'govt_wins'
-    #filter_col = sm.add_constant(filter_col)
     model = sm.OLS(df[target], df[filter_col]).fit()
 
     print(model.summary())
@@ -154,16 +176,6 @@ def test_stat_model(model):
     ypred = model.predict(outsample[filter_col])
     y_actual = insample[target]
     print('mse: (outsample) ' + str(np.mean((ypred - y_actual)) ** 2))
-
-
-def plot():
-
-    '''
-    
-    :return: 
-    '''
-
-    
 
 def lvl_circuityear():
     df = pd.read_csv("data/filtered.csv",low_memory=False)
