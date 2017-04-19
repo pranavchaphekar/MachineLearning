@@ -122,12 +122,48 @@ def regress():
     print('mse: ' + str(np.mean((predicted-expected)**2)))
 
 def fit_stat_model():
-    df = pd.read_csv('data/result_panel.csv', low_memory=False)
+    '''
+    Train the model using the training data
+    :return: Linear Regression with least OLS
+    '''
+    df = pd.read_csv('data/result_panel_train.csv', low_memory=False)
     filter_col = ['x_dem', 'x_nonwhite','x_noreligion']
     target = 'govt_wins'
     #filter_col = sm.add_constant(filter_col)
-    result = sm.OLS(df[target], df[filter_col]).fit() #fit the stat model
-    print(result.summary())
+    model = sm.OLS(df[target], df[filter_col]).fit()
+
+    print(model.summary())
+    return model
+
+def test_stat_model(model):
+    '''
+    Test the stat model on testing data
+    :return: Accuracy summary
+    '''
+    insample = pd.read_csv('data/result_panel_train.csv', low_memory= False)
+    outsample = pd.read_csv('data/result_panel_test.csv', low_memory= False)
+    filter_col = ['x_dem', 'x_nonwhite', 'x_noreligion']
+    target = 'govt_wins'
+
+    #In sample prediction
+    ypred = model.predict(insample[filter_col])
+    y_actual = insample[target]
+    print('mse: (insample) ' + str(np.mean((ypred - y_actual)) ** 2))
+
+    #Out of sample prediction
+    ypred = model.predict(outsample[filter_col])
+    y_actual = insample[target]
+    print('mse: (outsample) ' + str(np.mean((ypred - y_actual)) ** 2))
+
+
+def plot():
+
+    '''
+    
+    :return: 
+    '''
+
+    
 
 def lvl_circuityear():
     df = pd.read_csv("data/filtered.csv",low_memory=False)
@@ -175,6 +211,15 @@ def lvl_circuityear():
 
     df.to_csv('result_lvlcircuit.csv')
 
+#This function splits the file into test and train data
+def split_into_train_and_test():
+    df = pd.read_csv('data/result_panel.csv', low_memory=False)  # load into the data frame
+    msk = np.random.rand(len(df)) < 0.8
+    train = df[msk]
+    test = df[~msk]
+    train.to_csv('data/result_panel_train.csv')
+    test.to_csv('data/result_panel_test.csv')
+
 
 # read_environmental_law_indicator()
 #read_and_process_vote_level_data(read_environmental_law_indicator())
@@ -182,6 +227,8 @@ def lvl_circuityear():
 # add_X_col()
 lvl_judge()
 lvl_panel()
+split_into_train_and_test()
 #lvl_circuityear()
 #regress()
-fit_stat_model()
+model = fit_stat_model()
+test_stat_model(model)
