@@ -8,6 +8,7 @@ import statsmodels.api as sm
 
 
 def read_and_process_vote_level_data(case_ids):
+
     '''
     :param case_ids: Takes the case ids which are related to the environments
     :return: A csv file conatining the subset of the original data
@@ -251,6 +252,43 @@ def lvl_circuityear():
 
     df.to_csv('data/result_lvlcircuit.csv')
 
+    df.to_csv('data/result_lvlcircuit.csv')
+
+def actual_number_of_judges_circuit(circuit_no):
+    '''
+    This method adds the "actual number" column in the table generated after result_lvlcircuit
+    Circuit years from 1974 to 2013
+    Circuit no from 
+    :param circuit_no: 
+    :return: 
+    '''
+    df = pd.read_csv("data/result_circuityear.csv",low_memory=False)
+    df1 = df.loc[df['Circuit'] == circuit_no]
+    year_X = []
+    actual_no_of_democrats_per_seat_Y = []
+
+    #finding the start and end year if not mentioned explicitly
+    start_year = (int)(df1['year'].min())
+    end_year = (int)(df1['year'].max())
+
+    #Sort acc to the years
+    df1 = df1.sort_values(['year'])
+
+    print(start_year)
+    print(end_year)
+
+    for year_no in df1['year'].values:
+        if year_no in range(start_year, end_year):
+            year_X.append((int)(year_no))
+            democrats_no = df1.loc[df1['year'] == year_no, 'x_dem'].values[0]
+            republican_no = df1.loc[df1['year'] == year_no, 'x_republican'].values[0]
+            actual_no_of_democrats_per_seat = (democrats_no) / (democrats_no + republican_no)
+            actual_no_of_democrats_per_seat_Y.append(actual_no_of_democrats_per_seat)
+
+
+    return year_X, actual_no_of_democrats_per_seat_Y
+
+
 
 # This function splits the file into test and train data
 def split_into_train_and_test():
@@ -263,6 +301,7 @@ def split_into_train_and_test():
     # test.to_csv('data/result_panel_test.csv')
 
 
+
 # read_environmental_law_indicator()
 # read_and_process_vote_level_data(read_environmental_law_indicator())
 # cleaned_CSV()
@@ -270,8 +309,9 @@ def split_into_train_and_test():
 # lvl_judge()
 lvl_panel()
 # split_into_train_and_test()
-lvl_circuityear()
-# train, test = split_into_train_and_test()
-# # regress(train, test)
-# model = fit_stat_model(train, test)
-# test_stat_model(model, train, test)
+#lvl_circuityear()
+#train, test = split_into_train_and_test()
+# regress(train, test)
+#model = fit_stat_model(train, test)
+#test_stat_model(model, train, test)
+actual_number_of_judges_circuit(8)
