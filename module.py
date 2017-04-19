@@ -1,15 +1,18 @@
 import pickle
-import stat
-
 import pandas as pd
 import sys
 import numpy as np
 from sklearn.linear_model import LinearRegression
 from dashboard import *
-from statsmodels.formula.api import ols
 import statsmodels.api as sm
 
 def read_and_process_vote_level_data(case_ids):
+
+    '''
+    :param case_ids: Takes the case ids which are related to the environments
+    :return: A csv file conatining the subset of the original data
+    '''
+
     reader = pd.read_stata('data/BloombergVOTELEVEL_Touse.dta', iterator=True)
     df = pd.DataFrame()
 
@@ -29,6 +32,10 @@ def read_and_process_vote_level_data(case_ids):
 
 
 def read_environmental_law_indicator():
+    '''
+    
+    :return: 
+    '''
     df = pickle.load(open('data/govt_winner.pkl', 'rb'))
     environ_cases = df[df['govt_environ'] == 1]
     environ_cases = environ_cases[['caseid', 'govt_wins']]
@@ -36,6 +43,10 @@ def read_environmental_law_indicator():
 
 
 def cleaned_CSV():
+    '''
+    
+    :return: 
+    '''
     df = pd.read_csv('filtered.csv', low_memory=False)
     # read the handpicked attributes from a file into a list
     features = []
@@ -48,14 +59,26 @@ def cleaned_CSV():
     lines_subset.to_csv('filtered_subset.csv')
 
 
-def add_X_col():  # adds the govt wins col.
+def add_X_col():
+    '''
+    
+    :return: 
+    '''
     df = pd.read_csv('filtered_subset.csv')
     df = pd.merge(df, read_environmental_law_indicator(), on='caseid')
     df.to_csv('add_X_col.csv')
 
 
-# A function that creates the interactions
 def gen_inter(main_df, df1, df2, df1_col_name, df2_col_name):
+    '''
+    
+    :param main_df: 
+    :param df1: 
+    :param df2: 
+    :param df1_col_name: 
+    :param df2_col_name: 
+    :return: 
+    '''
     name_of_dataframe = df1_col_name + ' X ' + df2_col_name
     main_df[name_of_dataframe] = df1 * df2
     return main_df
@@ -105,43 +128,41 @@ def lvl_panel():
     grouped.to_csv('data/result_panel.csv')
 
 
-def regress():
-    df = pd.read_csv('data/result_panel.csv', low_memory=False)  # load into the data frame
+def regress(train, test):
+    # df = pd.read_csv('data/result_panel.csv', low_memory=False)  # load into the data frame
     # filter_col = [col for col in list(df) if col.startswith('x_')]
-    filter_col = ['x_dem', 'x_nonwhite']
+    filter_col = ['x_dem', 'x_nonwhite', 'x_noreligion']
     target = 'govt_wins'
     linear_reg = LinearRegression(normalize=True)
-    linear_reg.fit(df[filter_col], df[target])
+    linear_reg.fit(train[filter_col], train[target])
     result = pd.DataFrame(list(zip(filter_col, linear_reg.coef_)), columns=['features', 'coefficients'])
-    expected = df['govt_wins']
-    predicted = linear_reg.predict(df[filter_col])
+    expected = train['govt_wins']
+    predicted_insample = linear_reg.predict(train[filter_col])
+    predicted_outsample = linear_reg.predict(test[filter_col])
     print(result)
     print()
     print('Intercept: ' + str(linear_reg.intercept_))
-    print('R-sq: ' + str(linear_reg.score(df[filter_col], df[target])))
-    print('mse: ' + str(np.mean((predicted-expected)**2)))
+    print('R-sq: ' + str(linear_reg.score(train[filter_col], train[target])))
+    print('in sample mse: ' + str(np.mean((predicted_insample-expected)**2)))
+    print('out sample mse: ' + str(np.mean((predicted_outsample - expected) ** 2)))
 
-def fit_stat_model():
+def fit_stat_model(train, test):
     '''
     Train the model using the training data
     :return: Linear Regression with least OLS
     '''
-    df = pd.read_csv('data/result_panel_train.csv', low_memory=False)
     filter_col = ['x_dem', 'x_nonwhite','x_noreligion']
     target = 'govt_wins'
-    #filter_col = sm.add_constant(filter_col)
-    model = sm.OLS(df[target], df[filter_col]).fit()
+    model = sm.OLS(train[target], train[filter_col]).fit()
 
     print(model.summary())
     return model
 
-def test_stat_model(model):
+def test_stat_model(model, insample, outsample):
     '''
     Test the stat model on testing data
     :return: Accuracy summary
     '''
-    insample = pd.read_csv('data/result_panel_train.csv', low_memory= False)
-    outsample = pd.read_csv('data/result_panel_test.csv', low_memory= False)
     filter_col = ['x_dem', 'x_nonwhite', 'x_noreligion']
     target = 'govt_wins'
 
@@ -152,18 +173,8 @@ def test_stat_model(model):
 
     #Out of sample prediction
     ypred = model.predict(outsample[filter_col])
-    y_actual = insample[target]
+    y_actual = outsample[target]
     print('mse: (outsample) ' + str(np.mean((ypred - y_actual)) ** 2))
-
-
-def plot():
-
-    '''
-    
-    :return: 
-    '''
-
-    
 
 def lvl_circuityear():
     df = pd.read_csv("data/filtered.csv",low_memory=False)
@@ -217,18 +228,20 @@ def split_into_train_and_test():
     msk = np.random.rand(len(df)) < 0.8
     train = df[msk]
     test = df[~msk]
-    train.to_csv('data/result_panel_train.csv')
-    test.to_csv('data/result_panel_test.csv')
+    return train, test
+    # train.to_csv('data/result_panel_train.csv')
+    # test.to_csv('data/result_panel_test.csv')
 
 
 # read_environmental_law_indicator()
 #read_and_process_vote_level_data(read_environmental_law_indicator())
 # cleaned_CSV()
 # add_X_col()
-lvl_judge()
+# lvl_judge()
 lvl_panel()
-split_into_train_and_test()
+# split_into_train_and_test()
 #lvl_circuityear()
-#regress()
-model = fit_stat_model()
-test_stat_model(model)
+train, test = split_into_train_and_test()
+regress(train, test)
+model = fit_stat_model(train, test)
+test_stat_model(model, train, test)
