@@ -1,12 +1,16 @@
 import pickle
+import stat
+
 import pandas as pd
 import sys
 import numpy as np
 from sklearn.linear_model import LinearRegression
 from dashboard import *
+from statsmodels.formula.api import ols
+import statsmodels.api as sm
 
 def read_and_process_vote_level_data(case_ids):
-    reader = pd.read_stata('BloombergVOTELEVEL_Touse.dta', iterator=True)
+    reader = pd.read_stata('data/BloombergVOTELEVEL_Touse.dta', iterator=True)
     df = pd.DataFrame()
 
     try:
@@ -84,13 +88,12 @@ def lvl_judge():
             df_subset_dataframe = gen_inter(df_subset_dataframe, df1, df2, feature, other_feature)
 
     result = pd.concat([df_subset_non_interactions, df_subset_dataframe], axis=1)
-    result.to_csv('data/result_judge.csv')
-
-    # df1 = PolynomialFeatures(2, interaction_only=True, include_bias=False).fit_transform(df_subset_dataframe)
-    # Order of elements, Sorting
+     # Order of elements, Sorting
     sort_order = ['Circuit', 'year', 'month']
     # Sorting by the column enteries and store that in result dataframe
-    # result = df1.sort(['Circuit'])
+    result = result.sort_values(by = sort_order)
+    result.to_csv('data/result_judge.csv')
+
 
 
 def lvl_panel():
@@ -117,6 +120,14 @@ def regress():
     print('Intercept: ' + str(linear_reg.intercept_))
     print('R-sq: ' + str(linear_reg.score(df[filter_col], df[target])))
     print('mse: ' + str(np.mean((predicted-expected)**2)))
+
+def fit_stat_model():
+    df = pd.read_csv('data/result_panel.csv', low_memory=False)
+    filter_col = ['x_dem', 'x_nonwhite','x_noreligion']
+    target = 'govt_wins'
+    #filter_col = sm.add_constant(filter_col)
+    result = sm.OLS(df[target], df[filter_col]).fit() #fit the stat model
+    print(result.summary())
 
 def lvl_circuityear():
     df = pd.read_csv("data/filtered.csv",low_memory=False)
@@ -166,10 +177,11 @@ def lvl_circuityear():
 
 
 # read_environmental_law_indicator()
-# read_and_process_vote_level_data(read_environmental_law_indicator())
+#read_and_process_vote_level_data(read_environmental_law_indicator())
 # cleaned_CSV()
 # add_X_col()
-# lvl_judge()
-# lvl_panel()
+lvl_judge()
+lvl_panel()
 #lvl_circuityear()
-regress()
+#regress()
+fit_stat_model()
