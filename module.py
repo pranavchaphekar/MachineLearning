@@ -136,15 +136,16 @@ def regress(train, test):
     linear_reg = LinearRegression(normalize=True)
     linear_reg.fit(train[filter_col], train[target])
     result = pd.DataFrame(list(zip(filter_col, linear_reg.coef_)), columns=['features', 'coefficients'])
-    expected = train['govt_wins']
+    expected_insample = train['govt_wins']
+    expected_outsample = test['govt_wins']
     predicted_insample = linear_reg.predict(train[filter_col])
     predicted_outsample = linear_reg.predict(test[filter_col])
     print(result)
     print()
     print('Intercept: ' + str(linear_reg.intercept_))
     print('R-sq: ' + str(linear_reg.score(train[filter_col], train[target])))
-    print('in sample mse: ' + str(np.mean((predicted_insample-expected)**2)))
-    print('out sample mse: ' + str(np.mean((predicted_outsample - expected) ** 2)))
+    print('in sample mse: ' + str(np.mean((predicted_insample-expected_insample)**2)))
+    print('out sample mse: ' + str(np.mean((predicted_outsample - expected_outsample) ** 2)))
 
 def fit_stat_model(train, test):
     '''
@@ -242,6 +243,6 @@ lvl_panel()
 # split_into_train_and_test()
 #lvl_circuityear()
 train, test = split_into_train_and_test()
-regress(train, test)
+# regress(train, test)
 model = fit_stat_model(train, test)
 test_stat_model(model, train, test)
