@@ -7,6 +7,7 @@ from dashboard import *
 import statsmodels.api as sm
 from sklearn.feature_selection import SelectFromModel
 from sklearn.linear_model import LassoCV
+import DataVisualization as d
 
 
 def read_and_process_vote_level_data(case_ids):
@@ -335,8 +336,16 @@ def actual_number_of_judges_circuit(circuit_no):
             republican_no = df1.loc[df1['year'] == year_no, 'x_republican'].values[0]
             actual_no_of_democrats_per_seat = (democrats_no) / (democrats_no + republican_no)
             actual_no_of_democrats_per_seat_Y.append(actual_no_of_democrats_per_seat)
-
-
+    columns = ['Year', 'Actual democrats', 'headers']
+    df = pd.DataFrame(columns=columns)
+    a = d.DataVisualization()
+    g = []
+    for x in actual_no_of_democrats_per_seat_Y:
+        g.append(x*2)
+    a.scatter_plot(year_X,actual_no_of_democrats_per_seat_Y)
+    a.scatter_plot(year_X, g)
+    a.show_plot()
+    #a.line_curve(df,["Year","Actual democrats"],"Year")
     return year_X, actual_no_of_democrats_per_seat_Y
 
 
