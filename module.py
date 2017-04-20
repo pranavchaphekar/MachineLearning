@@ -5,10 +5,11 @@ import numpy as np
 from sklearn.linear_model import LinearRegression
 from dashboard import *
 import statsmodels.api as sm
+from sklearn.feature_selection import SelectFromModel
+from sklearn.linear_model import LassoCV
 
 
 def read_and_process_vote_level_data(case_ids):
-
     '''
     :param case_ids: Takes the case ids which are related to the environments
     :return: A csv file conatining the subset of the original data
@@ -258,9 +259,9 @@ def actual_number_of_judges_circuit(circuit_no):
     '''
     This method adds the "actual number" column in the table generated after result_lvlcircuit
     Circuit years from 1974 to 2013
-    Circuit no from 
-    :param circuit_no: 
-    :return: 
+    Circuit no from
+    :param circuit_no:
+    :return:
     '''
     df = pd.read_csv("data/result_circuityear.csv",low_memory=False)
     df1 = df.loc[df['Circuit'] == circuit_no]
@@ -301,6 +302,15 @@ def split_into_train_and_test():
     # test.to_csv('data/result_panel_test.csv')
 
 
+def lasso_for_feature_selection(df, target='govt_wins'):
+    characteristics_cols = [col for col in list(df) if col.startswith('x_')]
+    X, y = df[characteristics_cols].fillna(0), df[target]
+    clf = LassoCV()
+    sfm = SelectFromModel(clf, threshold=0.15)
+    sfm.fit(X, y)
+    print(sfm.transform(X).shape[1])
+    print([x for (x, y) in zip(characteristics_cols, sfm.get_support()) if y == True])
+
 
 # read_environmental_law_indicator()
 # read_and_process_vote_level_data(read_environmental_law_indicator())
@@ -309,9 +319,11 @@ def split_into_train_and_test():
 # lvl_judge()
 lvl_panel()
 # split_into_train_and_test()
-#lvl_circuityear()
-#train, test = split_into_train_and_test()
-# regress(train, test)
-#model = fit_stat_model(train, test)
-#test_stat_model(model, train, test)
+# lvl_circuityear()
+# train, test = split_into_train_and_test()
+# # regress(train, test)
+# model = fit_stat_model(train, test)
+# test_stat_model(model, train, test)
+df = pd.read_csv('data/result_panel.csv', low_memory=False)  # load into the data frame
+lasso_for_feature_selection(df)
 actual_number_of_judges_circuit(8)
