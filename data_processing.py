@@ -5,11 +5,13 @@ import numpy as np
 from dashboard import *
 
 
-def read_and_process_vote_level_data(case_ids):
+def read_and_process_vote_level_data():
     """
-    :param case_ids: Takes the case ids which are related to the environments
+    Takes the case ids which are related to the the case types,
+    eg here environmental cases
     :return: A csv file containing the subset of the original data
     """
+    case_ids = read_case_ids()
     reader = pd.read_stata(characteristic_data_path, iterator=True)
     df = pd.DataFrame()
 
@@ -78,15 +80,15 @@ def group_and_aggregate():
     return df2
 
 
-def read_environmental_cases():
+def read_case_ids():
     """
 
     :return:
     """
     df = pickle.load(open(lawvar_caseid_decision_file, 'rb'))
-    environ_cases = df[df['govt_environ'] == 1]
-    environ_cases = environ_cases[['caseid', 'govt_wins']]
-    return environ_cases
+    cases = df[df[case_type] == 1]
+    cases = cases[['caseid', lawvar]]
+    return cases
 
 
 def handpick_features_from_char_data(df):

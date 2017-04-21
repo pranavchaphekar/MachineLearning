@@ -4,6 +4,7 @@
 case_id_column = 'caseid'
 legal_area = "evironment"
 lawvar = "govt_wins"
+case_type = 'govt_environ'
 
 # Feature and Grouping Filters
 features_to_use = ['caseid', 'year', 'Circuit', 'month', 'govt_wins', 'songername', 'x_dem', 'x_republican',
@@ -26,3 +27,5 @@ lawvar_caseid_decision_file = 'data/govt_winner.pkl'  # Maps Case with boolean(0
 judge_level_file = 'data/judge_level_agg.csv'
 panel_level_file = 'data/panel_level_agg.csv'
 circuityear_level_file = 'data/circuityear_level_agg.csv'
+
+
