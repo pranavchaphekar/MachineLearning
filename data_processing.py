@@ -18,6 +18,7 @@ def read_and_process_vote_level_data():
     try:
         chunk = reader.get_chunk(1000)
         ctr = 1
+        sys.stdout.write("Loading Chunk : " + ' ')
         while len(chunk) > 0:
             chunk = chunk[chunk[case_id_column].isin(case_ids)]
             df = df.append(chunk, ignore_index=True)
@@ -48,6 +49,9 @@ def read_vote_level_data_into_dataframe():
         pass
     return df
 
+def read_filtered_data_into_dataframe():
+    df = pd.read_csv(filtered_char_data_path, low_memory=False)  # load into the data frame
+    return df
 
 def group_and_aggregate():
     df = read_vote_level_data_into_dataframe()
@@ -82,7 +86,8 @@ def group_and_aggregate():
 
 def read_case_ids():
     """
-
+    Reads the case ids of the cases with lawvars
+    and returns the list
     :return:
     """
     df = pickle.load(open(lawvar_caseid_decision_file, 'rb'))
@@ -126,7 +131,11 @@ def gen_interactions(main_df, df1, df2, df1_col_name, df2_col_name):
 
 
 def aggregate_on_judge_level(df):
-
+    '''
+    Aggregates data on Judge Level.Each case has 3 rows.
+    Used to generate panel level files
+    '''
+    df = pd.merge(df, read_case_ids(), on='caseid')
     interaction_list, non_interaction_list = [], []
 
     for col in list(df):  # only the variables chosen for cross product
@@ -185,8 +194,6 @@ def aggregate_on_circuityear_level():
     # df[df.panelvote in (2,3)]['proplaintiff'] = 1
     # df[df.protaking == 1]['proplaintiff'] = 0
     # df[df.protaking == 0]['proplaintiff'] = 1
-
-    print(list(df))
 
     # Generating and renaming variables so that they have appropriate names after collapsing gen
     # df.rename(columns={lawvar:'numCasesPro','caseid' :'numCases'}, inplace=True)

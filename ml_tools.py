@@ -4,6 +4,8 @@ from sklearn.linear_model import LinearRegression
 import statsmodels.api as sm
 from sklearn.feature_selection import SelectFromModel
 from sklearn.linear_model import LassoCV
+from statsmodels.iolib import SimpleTable
+
 from dashboard import *
 
 
@@ -38,7 +40,7 @@ def fit_stat_model(df, filter_col, target=lawvar):
     :return: Linear Regression with least OLS
     '''
     model = sm.OLS(df[target], df[filter_col]).fit()
-    convert_textfile(model)
+    #convert_textfile(model)
     return model
 
 
@@ -80,4 +82,33 @@ def lasso_for_feature_selection(df, target=lawvar):
     sfm.fit(X, y)
     print(sfm.transform(X).shape[1])
     print([x for (x, y) in zip(characteristics_cols, sfm.get_support()) if y == True])
+
+def compare_and_print_statsmodels(estimators, indice=0):
+    '''
+    Prints & saves comparitive results for different
+    StatsModels
+    :param estimators: Different statsmodel OLS models
+    '''
+    if indice in [0, 2]:
+        data_dict = {}
+        coeff = {}
+        i = 1
+        keys = []
+        if len(estimators) > 1:
+            for k, est in estimators.iteritems():
+                data_dict["("+str(i)+")"] = est.summary2().tables[indice].iloc[:, 1::2].stack().values
+                coeff["(" + str(i) + ")"] = est.params.values
+                keys = est.params.keys()
+                i = i + 1
+            index = estimators.popitem()[1].summary2().tables[indice].iloc[:, 0::2].stack().values
+            df = pd.DataFrame.from_dict(data_dict)
+            df2 = pd.DataFrame.from_dict(coeff)
+            df2.index = keys
+            tbl2 = SimpleTable(df2.values.tolist(), df2.columns.values.tolist(), df2.index.tolist(), title="Coefficients")
+            tbl = SimpleTable(df.values.tolist(), df.columns.values.tolist(), index.tolist(),title="Model Params")
+            df.index = index
+        else:
+            raise 'waiting for a dictionnary for estimators parameter'
+    else:
+        raise 'Not working for the coeff table'
 

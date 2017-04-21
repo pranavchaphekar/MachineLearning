@@ -18,9 +18,9 @@ train_test_split = 0.8
 
 # Input Files
 characteristic_data_path = 'data/BloombergVOTELEVEL_Touse.dta'
-filtered_char_data_path = 'filtered_characteristics.csv'
-handpicked_char_data_path = 'handpicked_characteristics.csv'
-char_with_legal_data = 'char_with_legal_data.csv'
+filtered_char_data_path = 'data/filtered_characteristics.csv'
+handpicked_char_data_path = 'data/handpicked_characteristics.csv'
+char_with_legal_data = 'data/char_with_legal_data.csv'
 lawvar_caseid_decision_file = 'data/govt_winner.pkl'  # Maps Case with boolean(0-1) decision of Lawvar Cases
 
 # Output Files
