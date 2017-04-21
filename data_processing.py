@@ -10,7 +10,6 @@ def read_and_process_vote_level_data(case_ids):
     :param case_ids: Takes the case ids which are related to the environments
     :return: A csv file containing the subset of the original data
     """
-
     reader = pd.read_stata(characteristic_data_path, iterator=True)
     df = pd.DataFrame()
 
@@ -84,7 +83,7 @@ def read_environmental_cases():
 
     :return:
     """
-    df = pickle.load(open('data/govt_winner.pkl', 'rb'))
+    df = pickle.load(open(lawvar_caseid_decision_file, 'rb'))
     environ_cases = df[df['govt_environ'] == 1]
     environ_cases = environ_cases[['caseid', 'govt_wins']]
     return environ_cases
@@ -209,7 +208,7 @@ def aggregate_on_circuityear_level():
     f['numCases'] = sumFun
     f['numCasesAnti'] = sumFun
     f['numCasesPro'] = sumFun
-    f['govt_wins'] = sumFun
+    f[lawvar] = sumFun
     for col in X_star:
         f[col] = meanFun
 
@@ -224,7 +223,7 @@ def aggregate_on_circuityear_level():
 
 # This function splits the file into test and train data
 def split_into_train_and_test(df):
-    msk = np.random.rand(len(df)) < 0.8
+    msk = np.random.rand(len(df)) < train_test_split
     train = df[msk]
     test = df[~msk]
     return train, test
