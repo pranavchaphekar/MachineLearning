@@ -8,9 +8,10 @@ import statsmodels.api as sm
 from sklearn.feature_selection import SelectFromModel
 from sklearn.linear_model import LassoCV
 
+count = 1
+
 
 def read_and_process_vote_level_data(case_ids):
-
     '''
     :param case_ids: Takes the case ids which are related to the environments
     :return: A csv file conatining the subset of the original data
@@ -34,54 +35,130 @@ def read_and_process_vote_level_data(case_ids):
     df.to_csv('filtered.csv')
 
 
-def read_vote_level_data_into_Dataframe():
-    reader = pd.read_stata('data/BloombergVOTELEVEL_Touse.dta', iterator=True)
-    #reader = pd.read_csv('data/filtered.csv',iterator=True)
-    df = pd.DataFrame()
+def read_data_for_appending_e():
+    # Read the environmental data and keep only 2 columns which will be useful further.
+    df_environmental = pd.read_csv("data/filtered.csv")
+    columns_to_be_kept = ['Circuit', 'year']
+    df_environmental = df_environmental[columns_to_be_kept]
+    df_environmental = df_environmental.dropna(subset=['year'])
+    df_environmental = df_environmental.drop_duplicates()
+    df_environmental = df_environmental.sort_values(by=columns_to_be_kept)
 
+    # read the Bloomberg_to_use.dta in chunks
+    # itr = pd.read_stata('data/BloombergVOTELEVEL_Touse.dta', chunksize=100000)
+    reader = pd.read_csv('data/filtered.csv', iterator=True)
+    df_final = []
+    # print(type(itr))
     try:
-        chunk = reader.get_chunk(1000)
+        chunk = reader.get_chunk(100)
         ctr = 1
         while len(chunk) > 0:
+            df = filter_chunk_acc_to_env_cases(chunk, df_environmental)
+            df1 = add_col_and_grp(df)
+            df_final.append(df1)
             sys.stdout.write(str(ctr) + ' ')
-            df = df.append(chunk, ignore_index=True)
             sys.stdout.flush()
             ctr += 1
-            chunk = reader.get_chunk(1000)
-    except (StopIteration, KeyboardInterrupt):
+            chunk = reader.get_chunk(100)
+    except:
         pass
+    concat = pd.concat(df_final)
+    concat = combine_with_env(concat)
+    concat = group_on_circuit_year(concat)
+    concat.to_csv('concat1.csv')
+
+
+def filter_chunk_acc_to_env_cases(df, df_environmental):
+    keys = ['Circuit', 'year']
+    df = df.dropna(subset=['year'])
+    joined = pd.merge(df, df_environmental, on=keys, how='inner')
+    # df = df.sort_values(by=keys)
+    # df_environmental = df_environmental.sort_values(by=keys)
+    # df.update(df_environmental)
+    return joined
+
+
+def add_col_and_grp(df):
+    # add a new avg_x and total_x col for dem
+
+    filter_col = [col for col in list(df) if col.startswith('x_')]
+    for col in filter_col:
+        count_ones = '1_' + col
+        total = 'total_' + col
+        df[count_ones] = df[col]
+        df[total] = df[col]
+
+    # df['1_x_dem'] = df['x_dem']
+    # df['total_x_dem'] = df['x_dem']
+
+    countFun = lambda x: len(x)
+    sumFun = lambda x: (x == 1).sum()
+
+    f = {}
+    # f['1_x_dem'] = sumFun
+    # f['total_x_dem'] = countFun
+
+    for col in filter_col:
+        count_ones = '1_' + col
+        total = 'total_' + col
+        f[count_ones] = sumFun
+        f[total] = countFun
+
+    df = df.groupby(['Circuit', 'year'], as_index=False).agg(f)
+
     return df
 
 
-def group_and_aggregate():
-    df = read_vote_level_data_into_Dataframe()
-
-    features_to_be_used_for_expectation = ['x_dem', 'x_republican',
-                           'x_instate_ba',
-                           'x_aba', 'x_protestant', 'x_evangelical', 'x_noreligion', 'x_catholic', 'x_jewish',
-                           'x_black', 'x_nonwhite',
-                           'x_female']  # keep only the limited set of variables (handpicked ones)
-
-    features_after_adding_e = []
-
-    #Adding new columns to the dataframe
-    for feature in features_to_be_used_for_expectation:
-        expected_feature = 'e_' + feature
-        features_after_adding_e.append(expected_feature)
-        df[expected_feature] = df[feature] # initialise that with the feature
-
-    df = df[np.isfinite(df['year'])]
-    df = df.fillna(0)
-
-    df1 = df.groupby(['Circuit','year'], as_index=False)[features_after_adding_e].mean()
-
-    df2 = pd.merge(df1, df, on=['Circuit','year'])
+def combine_with_env(df):
+    df_environmental = pd.read_csv("data/filtered.csv")
+    keys = ['Circuit', 'year']
+    df = pd.merge(df, df_environmental, on=keys, how='inner')
+    # df = df.sort_values(by=keys)
+    # df_environmental = df_environmental.sort_values(by=keys)
+    # df.update(df_environmental)
+    return df
 
 
-    #make the new dataframe of environmental cases only
-    df2.to_csv('test.csv')
+def group_on_circuit_year(df):
+    filter_col = [col for col in list(df) if col.startswith('x_')]
 
-    return df2
+    meanFun = lambda x: np.average(x)
+    sumFun = lambda x: x.sum()
+    f = {}
+    # f['1_x_dem'] = sumFun
+    # f['total_x_dem'] = sumFun
+
+    for col in filter_col:
+        count_ones = '1_' + col
+        total = 'total_' + col
+        f[count_ones] = sumFun
+        f[total] = sumFun
+        # f[col] = meanFun
+
+    df = df.groupby(['Circuit', 'year'], as_index=False).agg(f)
+    # df['e_x_dem'] = df['1_x_dem'] / df['total_x_dem']
+    for col in filter_col:
+        count_ones = '1_' + col
+        total = 'total_' + col
+        e_col = 'e_' + col
+        df[e_col] = df[count_ones] / df[total]
+        del df[count_ones]
+        del df[total]
+
+    return df
+
+
+def merge_expectations_with_lvl_circuit():
+    df1 = pd.read_csv('circuityear_level_agg.csv')
+    df2 = pd.read_csv('concat1.csv')
+    print(df1['Circuit'])
+    print(df2['Circuit'])
+    df = pd.merge(df1, df2, on=['Circuit', 'year'], how="inner")
+    df = df.sort_values(['Circuit', 'year'])
+    del df['Unnamed: 0']
+
+    df.to_csv('final_filtered.csv')
+
 
 def read_environmental_law_indicator():
     '''
@@ -143,7 +220,7 @@ def lvl_judge():
                            'x_instate_ba',
                            'x_aba', 'x_protestant', 'x_evangelical', 'x_noreligion', 'x_catholic', 'x_jewish',
                            'x_black', 'x_nonwhite',
-                           'x_female']  # keep only the limited set of variables (handpicked ones)
+                           'x_female', 'dissentvote']  # keep only the limited set of variables (handpicked ones)
     df_lvl_judge = df[features_to_be_kept]  # creates a new data frame with only few handpicked features
 
     interaction_list, non_interaction_list = [], []
@@ -165,6 +242,9 @@ def lvl_judge():
             df_subset_dataframe = gen_inter(df_subset_dataframe, df1, df2, feature, other_feature)
 
     result = pd.concat([df_subset_non_interactions, df_subset_dataframe], axis=1)
+
+    result['judge_opinion'] = 1 - result['dissentvote']  # not dissent
+    result = result.fillna(0)
     # Order of elements, Sorting
     sort_order = ['Circuit', 'year', 'month']
     # Sorting by the column enteries and store that in result dataframe
@@ -208,13 +288,12 @@ def regress(train, test):
     print('out sample mse: ' + str(np.mean((predicted_outsample - expected_outsample) ** 2)))
 
 
-def fit_stat_model(train, test):
+def fit_stat_model(train, target):
     '''
     Train the model using the training data
     :return: Linear Regression with least OLS
     '''
     filter_col = ['x_dem', 'x_nonwhite', 'x_noreligion']
-    target = 'govt_wins'
     model = sm.OLS(train[target], train[filter_col]).fit()
     convert_textfile(model)
     return model
@@ -231,13 +310,12 @@ def convert_textfile(model):
     f.close()
 
 
-def test_stat_model(model, insample, outsample):
+def test_stat_model(model, insample, outsample, target):
     '''
     Test the stat model on testing data
     :return: Accuracy summary
     '''
     filter_col = ['x_dem', 'x_nonwhite', 'x_noreligion']
-    target = 'govt_wins'
 
     # In sample prediction
     ypred = model.predict(insample[filter_col])
@@ -305,6 +383,7 @@ def lvl_circuityear():
 
     df.to_csv('data/result_lvlcircuit.csv')
 
+
 def actual_number_of_judges_circuit(circuit_no):
     '''
     This method adds the "actual number" column in the table generated after result_lvlcircuit
@@ -313,16 +392,16 @@ def actual_number_of_judges_circuit(circuit_no):
     :param circuit_no:
     :return:
     '''
-    df = pd.read_csv("data/result_circuityear.csv",low_memory=False)
+    df = pd.read_csv("data/result_circuityear.csv", low_memory=False)
     df1 = df.loc[df['Circuit'] == circuit_no]
     year_X = []
     actual_no_of_democrats_per_seat_Y = []
 
-    #finding the start and end year if not mentioned explicitly
+    # finding the start and end year if not mentioned explicitly
     start_year = (int)(df1['year'].min())
     end_year = (int)(df1['year'].max())
 
-    #Sort acc to the years
+    # Sort acc to the years
     df1 = df1.sort_values(['year'])
 
     print(start_year)
@@ -336,14 +415,12 @@ def actual_number_of_judges_circuit(circuit_no):
             actual_no_of_democrats_per_seat = (democrats_no) / (democrats_no + republican_no)
             actual_no_of_democrats_per_seat_Y.append(actual_no_of_democrats_per_seat)
 
-
     return year_X, actual_no_of_democrats_per_seat_Y
 
 
-
 # This function splits the file into test and train data
-def split_into_train_and_test():
-    df = pd.read_csv('data/result_panel.csv', low_memory=False)  # load into the data frame
+def split_into_train_and_test(data_path):
+    df = pd.read_csv(data_path, low_memory=False)  # load into the data frame
     msk = np.random.rand(len(df)) < 0.8
     train = df[msk]
     test = df[~msk]
@@ -352,11 +429,11 @@ def split_into_train_and_test():
     # test.to_csv('data/result_panel_test.csv')
 
 
-def lasso_for_feature_selection(df, target='govt_wins'):
+def lasso_for_feature_selection(df, target='judge_opinion'):
     characteristics_cols = [col for col in list(df) if col.startswith('x_')]
     X, y = df[characteristics_cols].fillna(0), df[target]
     clf = LassoCV()
-    sfm = SelectFromModel(clf, threshold=0.15)
+    sfm = SelectFromModel(clf)
     sfm.fit(X, y)
     print(sfm.transform(X).shape[1])
     print([x for (x, y) in zip(characteristics_cols, sfm.get_support()) if y == True])
@@ -367,14 +444,22 @@ def lasso_for_feature_selection(df, target='govt_wins'):
 # cleaned_CSV()
 # add_X_col()
 # lvl_judge()
-lvl_panel()
+# lvl_panel()
 # split_into_train_and_test()
 # lvl_circuityear()
-# train, test = split_into_train_and_test()
+# train, test = split_into_train_and_test('data/result_judge.csv')
 # # regress(train, test)
-# model = fit_stat_model(train, test)
-# test_stat_model(model, train, test)
-df = pd.read_csv('data/result_panel.csv', low_memory=False)  # load into the data frame
-lasso_for_feature_selection(df)
-actual_number_of_judges_circuit(8)
-group_and_aggregate()
+
+# model_judge_lvl = fit_stat_model(train, 'judge_opinion')
+# model_panel_lvl = fit_stat_model(train, 'govt_wins')
+
+# test_stat_model(model_judge_lvl, train, test, 'judge_opinion')
+# lasso_for_feature_selection(train)
+# test_stat_model(model_panel_lvl, train, test, 'govt_wins')
+
+# df = pd.read_csv('data/result_panel.csv', low_memory=False)  # load into the data frame
+# lasso_for_feature_selection(df)
+# actual_number_of_judges_circuit(8)
+# group_and_aggregate()
+# read_data_for_appending_e()
+merge_expectations_with_lvl_circuit()
