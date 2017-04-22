@@ -7,7 +7,7 @@ lawvar = "govt_wins"
 case_type = 'govt_environ'
 
 # Feature and Grouping Filters
-features_to_use = ['caseid', 'year', 'Circuit', 'month', 'govt_wins', 'songername', 'x_dem', 'x_republican',
+features_to_use = ['caseid', 'year', 'Circuit', 'month', 'songername', 'x_dem', 'x_republican',
                    'x_instate_ba', 'x_aba', 'x_protestant', 'x_evangelical', 'x_noreligion', 'x_catholic',
                    'x_jewish', 'x_black', 'x_nonwhite', 'x_female']
 ols_filter_col = ['x_dem', 'x_nonwhite', 'x_noreligion']  # Columns to be filtered for interactions in OLS

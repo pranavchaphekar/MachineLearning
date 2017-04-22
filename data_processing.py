@@ -33,7 +33,7 @@ def read_and_process_vote_level_data():
 
 def read_vote_level_data_into_dataframe():
     reader = pd.read_stata(characteristic_data_path, iterator=True)
-    # reader = pd.read_csv('data/filtered.csv',iterator=True)
+    # reader = pd.read_csv('data/filtered_characteristics.csv',iterator=True)
     df = pd.DataFrame()
 
     try:
@@ -129,6 +129,12 @@ def gen_interactions(main_df, df1, df2, df1_col_name, df2_col_name):
     main_df[name_of_dataframe] = df1 * df2
     return main_df
 
+
+def clean_nan_values(df):
+    return df.replace(np.nan, 0)
+
+def clean_na_values(df):
+    return df.fillna(0)
 
 def aggregate_on_judge_level(df):
     '''
@@ -229,6 +235,15 @@ def aggregate_on_circuityear_level():
 
     df.to_csv(circuityear_level_file)
 
+
+def read_panel_level_data():
+    df = pd.read_csv(panel_level_file, low_memory=False)  # load into the data frame
+    return df
+
+
+def read_circuityear_level_data():
+    df = pd.read_csv(circuityear_level_file, low_memory=False)  # load into the data frame
+    return df
 
 # This function splits the file into test and train data
 def split_into_train_and_test(df):

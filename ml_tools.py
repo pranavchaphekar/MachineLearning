@@ -40,7 +40,8 @@ def fit_stat_model(df, filter_col, target=lawvar):
     :return: Linear Regression with least OLS
     '''
     model = sm.OLS(df[target], df[filter_col]).fit()
-    #convert_textfile(model)
+    # convert_textfile(model)
+    print(model.summary())
     return model
 
 
@@ -76,12 +77,24 @@ def test_stat_model(model, insample, outsample):
 
 def lasso_for_feature_selection(df, target=lawvar):
     characteristics_cols = [col for col in list(df) if col.startswith('x_')]
-    X, y = df[characteristics_cols].fillna(0), df[target]
+    X, y = df[characteristics_cols], df[target]
     clf = LassoCV()
-    sfm = SelectFromModel(clf, threshold=0.15)
+    sfm = SelectFromModel(clf, threshold=0)
     sfm.fit(X, y)
-    print(sfm.transform(X).shape[1])
-    print([x for (x, y) in zip(characteristics_cols, sfm.get_support()) if y == True])
+
+    n_features = sfm.transform(X).shape[1]
+
+    # Reset the threshold till the number of features equals two.
+    # Note that the attribute can be set directly instead of repeatedly
+    # fitting the metatransformer.
+    while n_features > 5:
+        sfm.threshold += 0.05
+        X_transform = sfm.transform(X)
+        n_features = X_transform.shape[1]
+
+    features_selected = [x for (x, y) in zip(characteristics_cols, sfm.get_support()) if y == True]
+    return features_selected
+
 
 def compare_and_print_statsmodels(estimators, indice=0):
     '''
@@ -96,7 +109,7 @@ def compare_and_print_statsmodels(estimators, indice=0):
         keys = []
         if len(estimators) > 1:
             for k, est in estimators.iteritems():
-                data_dict["("+str(i)+")"] = est.summary2().tables[indice].iloc[:, 1::2].stack().values
+                data_dict["(" + str(i) + ")"] = est.summary2().tables[indice].iloc[:, 1::2].stack().values
                 coeff["(" + str(i) + ")"] = est.params.values
                 keys = est.params.keys()
                 i = i + 1
@@ -104,11 +117,11 @@ def compare_and_print_statsmodels(estimators, indice=0):
             df = pd.DataFrame.from_dict(data_dict)
             df2 = pd.DataFrame.from_dict(coeff)
             df2.index = keys
-            tbl2 = SimpleTable(df2.values.tolist(), df2.columns.values.tolist(), df2.index.tolist(), title="Coefficients")
-            tbl = SimpleTable(df.values.tolist(), df.columns.values.tolist(), index.tolist(),title="Model Params")
+            tbl2 = SimpleTable(df2.values.tolist(), df2.columns.values.tolist(), df2.index.tolist(),
+                               title="Coefficients")
+            tbl = SimpleTable(df.values.tolist(), df.columns.values.tolist(), index.tolist(), title="Model Params")
             df.index = index
         else:
             raise 'waiting for a dictionnary for estimators parameter'
     else:
         raise 'Not working for the coeff table'
-
