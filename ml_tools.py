@@ -102,13 +102,14 @@ def compare_and_print_statsmodels(estimators, indice=0):
     StatsModels
     :param estimators: Different statsmodel OLS models
     '''
+    print(estimators)
     if indice in [0, 2]:
         data_dict = {}
         coeff = {}
         i = 1
         keys = []
-        if len(estimators) > 1:
-            for k, est in estimators.iteritems():
+        if len(estimators) > 0:
+            for k, est in estimators.items():
                 data_dict["(" + str(i) + ")"] = est.summary2().tables[indice].iloc[:, 1::2].stack().values
                 coeff["(" + str(i) + ")"] = est.params.values
                 keys = est.params.keys()
@@ -119,7 +120,9 @@ def compare_and_print_statsmodels(estimators, indice=0):
             df2.index = keys
             tbl2 = SimpleTable(df2.values.tolist(), df2.columns.values.tolist(), df2.index.tolist(),
                                title="Coefficients")
-            tbl = SimpleTable(df.values.tolist(), df.columns.values.tolist(), index.tolist(), title="Model Params")
+            tbl = SimpleTable(df.values.tolist(), df.columns.values.tolist(), index.tolist(), title="Regression Results")
+            print(tbl)
+            print(tbl2)
             df.index = index
         else:
             raise 'waiting for a dictionnary for estimators parameter'

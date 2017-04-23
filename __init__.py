@@ -1,18 +1,28 @@
 import sys
-
+from enum import Enum
 import data_processing as dp
 import ml_tools as mlt
+import dashboard as db
 
+# Variable Declaration
 df = None
 
 
+class Level:
+    judge, panel, circuityear = range(3)
+
+# Run Parameters
+run_level = Level.circuityear
+run_lasso = False  # chooses handpicked variables if False or lasso chooses the features
+
+
 def _read_data_():
+    global df
     sys.stdout.write("\nReading & Loading Data".ljust(40))
     # dp.read_and_process_vote_level_data()
     # dp.read_vote_level_data_into_dataframe()
-    global df
     # df = dp.read_filtered_data_into_dataframe()
-    df = dp.read_panel_level_data()
+    df = dp.read_judge_level_data()
     sys.stdout.write("--complete\n")
 
 
@@ -31,24 +41,37 @@ def _generate_level_files_():
     sys.stdout.write("\nJudge Level".ljust(40))
     dp.aggregate_on_judge_level(df)
     sys.stdout.write("--complete" + ' ')
-    sys.stdout.write("\nPanel Level".ljust(40))
-    dp.aggregate_on_panel_level()
-    sys.stdout.write("--complete" + ' ')
-    sys.stdout.write("\nCircuit Year Level".ljust(40))
-    dp.aggregate_on_circuityear_level()
-    sys.stdout.write("--complete\n")
+    if run_level != Level.judge:
+        sys.stdout.write("\nPanel Level".ljust(40))
+        dp.aggregate_on_panel_level()
+        sys.stdout.write("--complete" + ' ')
+    elif run_level == Level.circuityear:
+        sys.stdout.write("\nCircuit Year Level".ljust(40))
+        dp.aggregate_on_circuityear_level()
+        sys.stdout.write("--complete\n")
 
 
 def _run_regression_():
     global df
-    models = []
+    models = {}
     sys.stdout.write("\nRunning Regression".ljust(40))
     train, test = dp.split_into_train_and_test(df)
     # mlt.ols_sklearn(train, test)
-    features_selected = mlt.lasso_for_feature_selection(df)
-    mlt.fit_stat_model(df, features_selected)
-    # models.append(mlt.fit_stat_model(train, test))
-    # compare_and_print_statsmodels()
+    features_selected = db.ols_filter_col
+    if run_lasso:
+        features_selected = mlt.lasso_for_feature_selection(df)
+    i = 1
+    models[0] = mlt.fit_stat_model(df, features_selected)
+    if Level.panel or Level.circuityear:
+        df = dp.read_panel_level_data()
+        _clean_data_()
+        models[i] = mlt.fit_stat_model(df, features_selected)
+        i=i+1
+    if Level.circuityear:
+        df = dp.read_circuityear_level_data()
+        _clean_data_()
+        models[i] = mlt.fit_stat_model(df, features_selected)
+    mlt.compare_and_print_statsmodels(models)
     sys.stdout.write("--complete\n")
 
 

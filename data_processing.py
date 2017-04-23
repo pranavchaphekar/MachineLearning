@@ -235,11 +235,13 @@ def aggregate_on_circuityear_level():
 
     df.to_csv(circuityear_level_file)
 
+def read_judge_level_data():
+    df = pd.read_csv(judge_level_file, low_memory=False)  # load into the data frame
+    return df
 
 def read_panel_level_data():
     df = pd.read_csv(panel_level_file, low_memory=False)  # load into the data frame
     return df
-
 
 def read_circuityear_level_data():
     df = pd.read_csv(circuityear_level_file, low_memory=False)  # load into the data frame
