@@ -30,8 +30,8 @@ def ols_sklearn(train, test):
     print()
     print('Intercept: ' + str(linear_reg.intercept_))
     print('R-sq: ' + str(linear_reg.score(train[ols_filter_col], train[target])))
-    print('in sample mse: ' + str(np.mean((predicted_insample - expected_insample) ** 2)))
-    print('out sample mse: ' + str(np.mean((predicted_outsample - expected_outsample) ** 2)))
+    print('in sample mse: ' + str(np.mean(predicted_insample - expected_insample) ** 2))
+    print('out sample mse: ' + str(np.mean(predicted_outsample - expected_outsample) ** 2))
 
 
 def fit_stat_model(df, filter_col, target=lawvar):
@@ -39,7 +39,10 @@ def fit_stat_model(df, filter_col, target=lawvar):
     Train the model using the training data
     :return: Linear Regression with least OLS
     '''
-    model = sm.OLS(df[target], df[filter_col]).fit()
+    y = df[target]
+    # X = sm.add_constant(df[filter_col])
+    X = df[filter_col]
+    model = sm.OLS(y, X).fit()
     # convert_textfile(model)
     print(model.summary())
     return model
