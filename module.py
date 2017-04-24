@@ -2,16 +2,19 @@ import pickle
 import pandas as pd
 import sys
 import numpy as np
-from sklearn.linear_model import LinearRegression
+from sklearn.ensemble import ExtraTreesClassifier
+from sklearn.linear_model import LinearRegression, ElasticNet, SGDClassifier
+from sklearn.neural_network import MLPClassifier
+from sklearn import linear_model
 from dashboard import *
 import statsmodels.api as sm
 from sklearn.feature_selection import SelectFromModel
 from sklearn.linear_model import LassoCV
-
-count = 1
+import data_visualization as d
 
 
 def read_and_process_vote_level_data(case_ids):
+
     '''
     :param case_ids: Takes the case ids which are related to the environments
     :return: A csv file conatining the subset of the original data
@@ -119,6 +122,11 @@ def combine_with_env(df):
     # df.update(df_environmental)
     return df
 
+    features_to_be_used_for_expectation = ['x_dem', 'x_republican',
+                           'x_instate_ba',
+                           'x_aba', 'x_protestant', 'x_evangelical', 'x_noreligion', 'x_catholic', 'x_jewish',
+                           'x_black', 'x_nonwhite',
+                           'x_female']  # keep only the limited set of variables (handpicked ones)
 
 def group_on_circuit_year(df):
     filter_col = [col for col in list(df) if col.startswith('x_')]
@@ -170,6 +178,7 @@ def merge_for_panel():
     print(list(df))
     df = df.sort_values(['Circuit', 'year'])
     df.to_csv('filtered1.csv')
+    # df2 = pd.read_csv('filtered1.csv')
 
 
 def read_environmental_law_indicator():
@@ -306,6 +315,7 @@ def fit_stat_model(train, target):
     :return: Linear Regression with least OLS
     '''
     filter_col = ['x_dem', 'x_nonwhite', 'x_noreligion']
+    target = 'govt_wins'
     model = sm.OLS(train[target], train[filter_col]).fit()
     convert_textfile(model)
     return model
@@ -395,7 +405,6 @@ def lvl_circuityear():
 
     df.to_csv('data/result_lvlcircuit.csv')
 
-
 def actual_number_of_judges_circuit(circuit_no):
     '''
     This method adds the "actual number" column in the table generated after result_lvlcircuit
@@ -409,11 +418,11 @@ def actual_number_of_judges_circuit(circuit_no):
     year_X = []
     actual_no_of_democrats_per_seat_Y = []
 
-    # finding the start and end year if not mentioned explicitly
+    #finding the start and end year if not mentioned explicitly
     start_year = (int)(df1['year'].min())
     end_year = (int)(df1['year'].max())
 
-    # Sort acc to the years
+    #Sort acc to the years
     df1 = df1.sort_values(['year'])
 
     print(start_year)
@@ -426,8 +435,18 @@ def actual_number_of_judges_circuit(circuit_no):
             republican_no = df1.loc[df1['year'] == year_no, 'x_republican'].values[0]
             actual_no_of_democrats_per_seat = (democrats_no) / (democrats_no + republican_no)
             actual_no_of_democrats_per_seat_Y.append(actual_no_of_democrats_per_seat)
-
+    columns = ['Year', 'Actual democrats', 'headers']
+    df = pd.DataFrame(columns=columns)
+    a = d.DataVisualization()
+    g = []
+    for x in actual_no_of_democrats_per_seat_Y:
+        g.append(x*2)
+    a.scatter_plot(year_X,actual_no_of_democrats_per_seat_Y)
+    a.scatter_plot(year_X, g)
+    a.show_plot()
+    #a.line_curve(df,["Year","Actual democrats"],"Year")
     return year_X, actual_no_of_democrats_per_seat_Y
+
 
 
 # This function splits the file into test and train data
@@ -441,14 +460,52 @@ def split_into_train_and_test(data_path):
     # test.to_csv('data/result_panel_test.csv')
 
 
-def lasso_for_feature_selection(df, target='judge_opinion'):
+def lasso_for_feature_selection(df, target='govt_wins'):
     characteristics_cols = [col for col in list(df) if col.startswith('x_')]
     X, y = df[characteristics_cols].fillna(0), df[target]
     clf = LassoCV()
-    sfm = SelectFromModel(clf)
+    sfm = SelectFromModel(clf, threshold=0.15)
     sfm.fit(X, y)
     print(sfm.transform(X).shape[1])
     print([x for (x, y) in zip(characteristics_cols, sfm.get_support()) if y == True])
+
+
+def random_forest_for_feature_selection(df, target = 'govt_wins'):
+    characteristics_col = [col for col in list(df) if col.startswith('x_')]
+    X, y = df[characteristics_col].fillna(0), df[target]
+    del df['Unnamed: 0']
+    model = linear_model.ElasticNet(l1_ratio=0.7)
+    sfm = SelectFromModel(model, threshold=0.05)
+    sfm.fit(X, y)
+    n_features = sfm.transform(X).shape[1]
+
+    # Reset the threshold till the number of features equals two.
+    # Note that the attribute can be set directly instead of repeatedly
+    # fitting the metatransformer.
+    while n_features > 5:
+        sfm.threshold += 0.01
+        X_transform = sfm.transform(X)
+        n_features = X_transform.shape[1]
+    # print(sfm.transform(X).shape[1])
+    print([x for (x, y) in zip(characteristics_col, sfm.get_support()) if y == True])
+
+    # importances = model.feature_importances_
+    # std = np.std([tree.feature_importances_ for tree in model.estimators_],
+    #              axis=0)
+    # indices = np.argsort(importances)[::-1]
+    #
+    # # Print the feature ranking
+    # print("Feature ranking:")
+    #
+    # for f in range(X.shape[1]):
+    #     print("%d. feature %d (%f)" % (f + 1, indices[f], importances[indices[f]]))
+
+
+    # print(list(df.columns.values))
+    # print(model.feature_importances_)
+    # print("Features sorted by their score:")
+    # print(sorted(zip(map(lambda x: round(x, 4), model.feature_importances_)),
+    #        reverse=True))
 
 
 # read_environmental_law_indicator()
@@ -459,7 +516,7 @@ def lasso_for_feature_selection(df, target='judge_opinion'):
 # lvl_panel()
 # split_into_train_and_test()
 # lvl_circuityear()
-# train, test = split_into_train_and_test('data/result_judge.csv')
+train, test = split_into_train_and_test('data/result_judge.csv')
 # # regress(train, test)
 
 # model_judge_lvl = fit_stat_model(train, 'judge_opinion')
@@ -475,4 +532,5 @@ def lasso_for_feature_selection(df, target='judge_opinion'):
 # group_and_aggregate()
 # read_data_for_appending_e()
 # merge_expectations_with_lvl_circuit()
-merge_for_panel()
+# merge_for_panel()
+random_forest_for_feature_selection(train)
