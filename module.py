@@ -64,6 +64,7 @@ def read_data_for_appending_e():
         pass
     concat = pd.concat(df_final)
     concat = combine_with_env(concat)
+    concat.to_csv('concat2.csv')
     concat = group_on_circuit_year(concat)
     concat.to_csv('concat1.csv')
 
@@ -158,6 +159,17 @@ def merge_expectations_with_lvl_circuit():
     del df['Unnamed: 0']
 
     df.to_csv('final_filtered.csv')
+
+def merge_for_panel():
+    df1 = pd.read_csv('concat1.csv')
+    df2 = pd.read_csv('data/filtered.csv')
+
+    df = pd.merge(df2, df1, on=['Circuit', 'year'])
+    del df['Unnamed: 0_x']
+    del df['Unnamed: 0_y']
+    print(list(df))
+    df = df.sort_values(['Circuit', 'year'])
+    df.to_csv('filtered1.csv')
 
 
 def read_environmental_law_indicator():
@@ -462,4 +474,5 @@ def lasso_for_feature_selection(df, target='judge_opinion'):
 # actual_number_of_judges_circuit(8)
 # group_and_aggregate()
 # read_data_for_appending_e()
-merge_expectations_with_lvl_circuit()
+# merge_expectations_with_lvl_circuit()
+merge_for_panel()
