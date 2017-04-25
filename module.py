@@ -2,15 +2,14 @@ import pickle
 import pandas as pd
 import sys
 import numpy as np
-from sklearn.ensemble import ExtraTreesClassifier
-from sklearn.linear_model import LinearRegression, ElasticNet, SGDClassifier
-from sklearn.neural_network import MLPClassifier
-from sklearn import linear_model
+from sklearn.cross_decomposition import PLSRegression, PLSCanonical
+from sklearn.linear_model import LinearRegression, ElasticNet, SGDClassifier, LogisticRegression, ElasticNetCV
 from dashboard import *
 import statsmodels.api as sm
 from sklearn.feature_selection import SelectFromModel
 from sklearn.linear_model import LassoCV
 import data_visualization as d
+
 
 
 def read_and_process_vote_level_data(case_ids):
@@ -474,8 +473,10 @@ def random_forest_for_feature_selection(df, target = 'govt_wins'):
     characteristics_col = [col for col in list(df) if col.startswith('x_')]
     X, y = df[characteristics_col].fillna(0), df[target]
     del df['Unnamed: 0']
-    model = linear_model.ElasticNet(l1_ratio=0.7)
+    model = ElasticNetCV(l1_ratio=[.01, .1,.5,.7,.9, .99, 1], n_alphas=20, n_jobs=4,
+              selection='random', max_iter=3000, tol=1e-6)
     sfm = SelectFromModel(model, threshold=0.05)
+    print(X.shape)
     sfm.fit(X, y)
     n_features = sfm.transform(X).shape[1]
 
@@ -506,7 +507,6 @@ def random_forest_for_feature_selection(df, target = 'govt_wins'):
     # print("Features sorted by their score:")
     # print(sorted(zip(map(lambda x: round(x, 4), model.feature_importances_)),
     #        reverse=True))
-
 
 # read_environmental_law_indicator()
 # read_and_process_vote_level_data(read_environmental_law_indicator())
