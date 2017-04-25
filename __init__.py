@@ -2,7 +2,7 @@ import sys
 from enum import Enum
 
 from sklearn.ensemble import ExtraTreesClassifier
-from sklearn.linear_model import LassoCV
+from sklearn.linear_model import LassoCV, ElasticNetCV, LogisticRegression
 
 import data_processing as dp
 import ml_tools as mlt
@@ -19,6 +19,8 @@ class Level:
 run_level = Level.circuityear
 run_lasso = False  # chooses handpicked variables if False or lasso chooses the features
 run_random_forest = False
+run_elastic_net = False
+run_Logistic_regression = False
 
 
 def _read_data_():
@@ -67,6 +69,10 @@ def _run_regression_():
         features_selected = mlt.feature_selection(df, LassoCV())
     elif run_random_forest:
         features_selected = mlt.feature_selection(df, ExtraTreesClassifier())
+    elif run_elastic_net:
+        features_selected = mlt.feature_selection(df, ElasticNetCV())
+    elif run_Logistic_regression:
+        features_selected = mlt.feature_selection(df, LogisticRegression())
     i = 1
     models[0] = mlt.fit_stat_model(df, features_selected)
     if Level.panel or Level.circuityear:
