@@ -7,6 +7,7 @@ from sklearn.linear_model import LassoCV, ElasticNetCV, LogisticRegression
 import data_processing as dp
 import ml_tools as mlt
 import dashboard as db
+import data_visualization as dv
 
 # Variable Declaration
 df = None
@@ -22,6 +23,18 @@ run_random_forest = False
 run_elastic_net = False
 run_Logistic_regression = False
 
+def __agrregate_data__():
+    global df
+    sys.stdout.write(("\nFiltering data for Legal Area: "+db.legal_area).ljust(50))
+    df = dp.read_and_process_vote_level_data()
+    sys.stdout.write("--complete\n")
+    sys.stdout.write(("\nHandpicking Important features from Filtered Data" + db.legal_area).ljust(50))
+    df = dp.read_filtered_data_into_dataframe()
+    sys.stdout.write("--complete\n")
+    sys.stdout.write(("\nFiltering data for Legal area: " + db.legal_area).ljust(50))
+    sys.stdout.write("--complete\n")
+    df = dp.read_and_process_vote_level_data()
+    sys.stdout.write("--complete\n")
 
 def _read_data_():
     global df
@@ -33,12 +46,12 @@ def _read_data_():
     sys.stdout.write("--complete\n")
 
 
-def _clean_data_():
-    global df
+def _clean_data_(df):
     sys.stdout.write("\nCleaning Data".ljust(40))
     df = dp.clean_nan_values(df)
     df = dp.clean_na_values(df)
     sys.stdout.write("--complete\n")
+    return df
 
 
 def _generate_level_files_():
@@ -87,17 +100,29 @@ def _run_regression_():
     mlt.compare_and_print_statsmodels(models)
     sys.stdout.write("--complete\n")
 
-
 def _generate_plots_():
-    sys.stdout.write("")
-
+    sys.stdout.write("\nGenerating Plots".ljust(40))
+    global df2
+    if db.epectations_generated:
+        df2 = dp.read_expectations_data()
+    d = dv.DataVisualization()
+    d.set_title("Random Variation by Circuit: Democrat")
+    for i in range(1,13):
+        d.increment()
+        d1 = df[df['Circuit'] == i]
+        d2 = df2[df2['Circuit'] == i]
+        d.scatter_plot("year", "x_dem", d1, False)
+        d.scatter_plot("year","e_x_dem",d2,True)
+    d.show_plot()
+    sys.stdout.write("--complete\n")
 
 def pipeline():
+    __agrregate_data__()
     _read_data_()
     _clean_data_()
     # _generate_level_files_()
     _run_regression_()
-    # _generate_plots_()
+    _generate_plots_()
 
 
 if __name__ == "__main__":

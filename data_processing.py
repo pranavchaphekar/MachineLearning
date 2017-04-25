@@ -223,6 +223,7 @@ def aggregate_on_circuityear_level():
     f['numCases'] = sumFun
     f['numCasesAnti'] = sumFun
     f['numCasesPro'] = sumFun
+    f['govt_wins'] = meanFun
     f[lawvar] = sumFun
     for col in X_star:
         f[col] = meanFun
@@ -245,6 +246,10 @@ def read_panel_level_data():
 
 def read_circuityear_level_data():
     df = pd.read_csv(circuityear_level_file, low_memory=False)  # load into the data frame
+    return df
+
+def read_expectations_data():
+    df = pd.read_csv(generated_circuityear_expectations_file, low_memory=False)  # load into the data frame
     return df
 
 # This function splits the file into test and train data
