@@ -31,3 +31,6 @@ panel_level_file = 'data/panel_level_agg.csv'
 circuityear_level_file = 'data/circuityear_level_agg.csv'
 
 
+#Graphs
+all_circuit_actual_expected_comparison = {'Democrat' : 'x_dem'}
+

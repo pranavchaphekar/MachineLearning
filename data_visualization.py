@@ -3,6 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import time
 import seaborn as sns
+import dashboard as db
 
 from matplotlib.ticker import MultipleLocator
 
@@ -17,15 +18,15 @@ class DataVisualization():
                     (227, 119, 194), (247, 182, 210), (127, 127, 127), (199, 199, 199),
                     (188, 189, 34), (219, 219, 141), (23, 190, 207), (158, 218, 229)]
 
-    def __init__(self,num_plots=2):
+    def __init__(self,num_plots=2,grid_i=1,grid_j=1):
         print("Something")
-        self.f,self.sub_plt = plt.subplots(ncols=num_plots)
+        #self.f,self.sub_plt = plt.subplots(ncols=num_plots)
         self.i = -1
         self.j= -1
-        self.f, self.axarr = plt.subplots(3, 4)
+        self.f, self.axarr = plt.subplots(grid_i, grid_j)
         plt.axis('tight')
         #plt.subplots_adjust(left=0.8, right=0.9, top=0.9, bottom=0.8)
-        self.f.tight_layout()  # Or equivalently,  "plt.tight_layout()"
+        #self.f.tight_layout()  # Or equivalently,  "plt.tight_layout()"
         # self.scale_colors()
 
     def scale_colors(self):
@@ -42,38 +43,11 @@ class DataVisualization():
         self.f.add_axes(rect, label='axes2')
 
     def scatter_plot(self, x, y,df,fit_reg=False):
-        '''
-         plt.scatter(x, y)
-        self.ax = plt.subplot(111)
-        self.ax.spines["top"].set_visible(False)
-        self.ax.spines["right"].set_visible(False)
-        self.ax.grid(alpha=0.3)
-        self.ax.spines['bottom'].set_linewidth(0.5)
-        self.ax.spines['left'].set_linewidth(0.5)
-        #loc = MultipleLocator(100)  # this locator puts ticks at regular intervals
-        #self.ax.xaxis.set_major_locator(loc)
-        #self.ax.fill_between(x, 0, y, alpha=0.1)
-        #plt.plot(lw=2)
-        '''
-        #sns.set(color_codes=True)
-        #self.ax = sns.regplot(x=x, y=y, data=df)
-        #sns.regplot(x=x, y=y,
-        #           data=df,
-        #           fit_reg=fit_reg)
-        #self.i = self.i+1
         self.axarr[self.i,(self.j)%4].scatter(df[x], df[y],s=2)
         self.axarr[self.i, (self.j) % 4].set_title("Circuit "+str(self.j+1), size=8)
         self.axarr[self.i, (self.j) % 4].tick_params(labelsize=6)
-        #ax.set_ylabel('Year', fontsize=20.0)  # Y label
-        #ax.set_xlabel('Active Cdc2-cyclin B', fontsize=20)  # X label
-        #self.axarr[self.i, (self.j) % 4].xlabel('xlabel', fontsize=9)
-        #self.axarr[self.i, (self.j) % 4].ylabel('ylabel', fontsize=9)
-        if self.i ==2 and self.j%4 == 3:
-            print(df)
         if(fit_reg):
-            self.axarr[self.i, (self.j)%4].plot(df[x], df[y],linewidth=0.7)
-            self.axarr[self.i, (self.j) % 4]
-        #sns.lmplot(x="year", y="Circuit", hue="e_x_dem", data=df)
+            self.axarr[self.i, (self.j)%4].plot(df[x], df[y],linewidth=0.7,color="red")
 
     def pointplot(self, x, y,df,):
         self.ax = sns.pointplot(x=x, y=y, data=df)
@@ -95,6 +69,7 @@ class DataVisualization():
             plt.yaxis.set_label_position("right")
 
     def show_plot(self):
+        self.f.tight_layout()
         plt.show()
 
     def bar_chart(self, save=False):
@@ -124,6 +99,19 @@ class DataVisualization():
 
     def save_plot(self):
         plt.savefig("images/" + str(time.time()) + ".png", bbox_inches="tight");
+
+def all_circuit_comparison(expected,actual):
+    for k,v in db.all_circuit_actual_expected_comparison.items():
+        d = DataVisualization(grid_i=4, grid_j=4)
+        d.set_title("Random Variation by Circuit: "+str(k))
+        for i in range(1, 13):
+            print('Circuit: '+str(i))
+            d.increment()
+            d1 = actual[actual['Circuit'] == i]
+            d2 = expected[expected['Circuit'] == i]
+            d.scatter_plot("year", v, d1, False)
+            d.scatter_plot("year", "e_"+v, d2, True)
+        d.show_plot()
 
 def __test__():
     a = ['Health Professions', 'Public Administration', 'Education', 'Psychology',

@@ -76,7 +76,7 @@ def handpick_features_from_char_data(df):
 
     :return:
     """
-    df.to_csv(handpicked_char_data_path)
+    df[features_to_use].to_csv(handpicked_char_data_path)
     return df[features_to_use]
 
 
@@ -113,6 +113,7 @@ def gen_interactions(main_df, df1, df2, df1_col_name, df2_col_name):
 
 def merge_char_with_legal_data(df):
     df = pd.merge(df, read_case_ids(), on='caseid')
+    del df['Unnamed: 0']
     df.to_csv(char_with_legal_data)
     return df
 

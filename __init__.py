@@ -26,13 +26,13 @@ run_logistic_regression = False
 
 
 def _filter_data_():
-    sys.stdout.write(("\nFiltering data for Legal Area: " + db.legal_area).ljust(50))
-    dp.read_and_process_vote_level_data()
+    sys.stdout.write(("\nFiltering data for legal area: " + db.legal_area).ljust(50))
+    #dp.read_and_process_vote_level_data()
     sys.stdout.write("--complete\n")
 
 
 def _handpick_features_from_filtered_data_():
-    sys.stdout.write(("\nHandpicking Important features from Filtered Data" + db.legal_area).ljust(50))
+    sys.stdout.write("\nHandpicking imp features from filtered data".ljust(50))
     df = dp.read_filtered_data_into_dataframe()
     dp.handpick_features_from_char_data(df)
     sys.stdout.write("--complete\n")
@@ -55,14 +55,14 @@ def _generate_level_files_():
         sys.stdout.write("\nPanel Level".ljust(50))
         dp.aggregate_on_panel_level()
         sys.stdout.write("--complete" + ' ')
-    elif run_level == Level.circuityear:
+    if run_level == Level.circuityear:
         sys.stdout.write("\nCircuit Year Level".ljust(50))
         dp.aggregate_on_circuityear_level()
         sys.stdout.write("--complete\n")
 
 def _generate_expectations_at_circuityear_level_():
     sys.stdout.write("\nGenerating Expectations".ljust(50))
-    dp.generate_expectations()
+    #dp.generate_expectations()
     sys.stdout.write("--complete\n")
 
 def _agg_cy_data_and_expectation_data():
@@ -87,9 +87,9 @@ def _clean_data_(df):
 
 
 def _run_regression_():
-    global df
     models = {}
     sys.stdout.write("\nRunning Regression".ljust(50))
+    df = dp.read_circuityear_level_data()
     train, test = dp.split_into_train_and_test(df)
     # mlt.ols_sklearn(train, test)
     features_selected = db.ols_filter_col
@@ -99,18 +99,18 @@ def _run_regression_():
         features_selected = mlt.feature_selection(df, ExtraTreesClassifier())
     elif run_elastic_net:
         features_selected = mlt.feature_selection(df, ElasticNetCV())
-    elif run_Logistic_regression:
+    elif run_logistic_regression:
         features_selected = mlt.feature_selection(df, LogisticRegression())
     i = 1
     models[0] = mlt.fit_stat_model(df, features_selected)
     if Level.panel or Level.circuityear:
         df = dp.read_panel_level_data()
-        _clean_data_()
+        _clean_data_(df)
         models[i] = mlt.fit_stat_model(df, features_selected)
         i = i + 1
     if Level.circuityear:
         df = dp.read_circuityear_level_data()
-        _clean_data_()
+        _clean_data_(df)
         models[i] = mlt.fit_stat_model(df, features_selected)
     mlt.compare_and_print_statsmodels(models)
     sys.stdout.write("--complete\n")
@@ -118,25 +118,18 @@ def _run_regression_():
 
 def _generate_plots_():
     sys.stdout.write("\nGenerating Plots".ljust(50))
-    global df2
-    if db.epectations_generated:
-        df2 = dp.read_expectations_data()
-    d = dv.DataVisualization()
-    d.set_title("Random Variation by Circuit: Democrat")
-    for i in range(1, 13):
-        d.increment()
-        d1 = df[df['Circuit'] == i]
-        d2 = df2[df2['Circuit'] == i]
-        d.scatter_plot("year", "x_dem", d1, False)
-        d.scatter_plot("year", "e_x_dem", d2, True)
-    d.show_plot()
+    df = dp.read_circuityear_level_data()
+    df2 = dp.read_expectations_data()
+    dv.all_circuit_comparison(expected=df2,actual=df)
     sys.stdout.write("--complete\n")
 
 
 def pipeline():
-    _read_data_()
-    _clean_data_()
-    # _generate_level_files_()
+    _filter_data_()
+    _handpick_features_from_filtered_data_()
+    _merge_instruments_z_x_()
+    _generate_level_files_()
+    _generate_expectations_at_circuityear_level_()
     _run_regression_()
     _generate_plots_()
 
