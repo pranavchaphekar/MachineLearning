@@ -208,7 +208,6 @@ def aggregate_on_circuityear_level():
     f['numCases'] = sumFun
     f['numCasesAnti'] = sumFun
     f['numCasesPro'] = sumFun
-    f['govt_wins'] = meanFun
     f[lawvar] = sumFun
     for col in X_star:
         f[col] = meanFun
