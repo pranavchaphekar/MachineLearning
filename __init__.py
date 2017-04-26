@@ -68,9 +68,6 @@ def _generate_expectations_at_circuityear_level_():
     sys.stdout.write("--complete\n")
 
 
-def _agg_cy_data_and_expectation_data():
-    pass
-
 
 def _read_data_():
     global df

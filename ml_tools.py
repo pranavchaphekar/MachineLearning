@@ -106,7 +106,7 @@ def compare_and_print_statsmodels(estimators, indice=0):
     StatsModels
     :param estimators: Different statsmodel OLS models
     '''
-    print(estimators)
+    print("\n")
     if indice in [0, 2]:
         data_dict = {}
         coeff = {}
@@ -115,8 +115,21 @@ def compare_and_print_statsmodels(estimators, indice=0):
         if len(estimators) > 0:
             for k, est in estimators.items():
                 data_dict["(" + str(i) + ")"] = est.summary2().tables[indice].iloc[:, 1::2].stack().values
-                coeff["(" + str(i) + ")"] = est.params.values
-                keys = est.params.keys()
+                coeff_with_err=[]
+                keys = []
+                #for attr in dir(est):
+                #    print("obj.%s = %s" % (attr, getattr(est, attr)))
+                #print(type(est.params.values))
+                for i in range(len(est.params.values)):
+                    coeff_with_err.append(est.params.values[i])
+                    coeff_with_err.append("("+str(est.bse.values[i])+")")
+                    #coeff_with_err.append("(" + str(est.pvalues) + ")")
+                    keys.append(est.params.keys()[i])
+                    keys.append(est.params.keys()[i]+" ")
+                    #keys.append(est.params.keys()[i]+"_p_value")
+                #coeff["(" + str(k) + ")"] = np.array(coeff_with_err)
+                coeff["(" + str(k) + ")"] = np.array(coeff_with_err)
+                keys = np.array(keys)
                 i = i + 1
             index = estimators.popitem()[1].summary2().tables[indice].iloc[:, 0::2].stack().values
             df = pd.DataFrame.from_dict(data_dict)

@@ -55,8 +55,8 @@ class DataVisualization():
     def increment(self):
         self.j = self.j + 1
         self.i = int((self.j) / 4)
-        print("j:" + str(self.j))
-        print("i:" + str(self.i) + " j:" + str(self.j % 4))
+        #print("j:" + str(self.j))
+        #print("i:" + str(self.i) + " j:" + str(self.j % 4))
 
     def set_title(self,title):
         plt.suptitle(title, fontsize=12)
@@ -105,7 +105,7 @@ def all_circuit_comparison(expected,actual):
         d = DataVisualization(grid_i=4, grid_j=4)
         d.set_title("Random Variation by Circuit: "+str(k))
         for i in range(1, 13):
-            print('Circuit: '+str(i))
+            #print('Circuit: '+str(i))
             d.increment()
             d1 = actual[actual['Circuit'] == i]
             d2 = expected[expected['Circuit'] == i]
