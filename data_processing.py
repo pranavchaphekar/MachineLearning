@@ -240,6 +240,10 @@ def read_expectations_data():
     df = pd.read_csv(generated_circuityear_expectations_file, low_memory=False)  # load into the data frame
     return df
 
+def read_lags_leads_data():
+    df = pd.read_csv(lags_leads_file, low_memory=False)
+    return df
+
 
 # This function splits the file into test and train data
 def split_into_train_and_test(df):
@@ -354,14 +358,14 @@ def generate_lags_and_leads(features, n_lags=1, n_leads=1):
     for i in range(n_lags):
         for f in features:
             f_lag = f + '_t' + str(i + 1)
-            df[f_lag] = df.groupby('Circuit')[f].shift(1)
+            df[f_lag] = df.groupby('Circuit')[f].shift(i+1)
 
     for i in range(n_leads):
         for f in features:
             f_lag = f + '_f' + str(i + 1)
-            df[f_lag] = df.groupby('Circuit')[f].shift(-1)
+            df[f_lag] = df.groupby('Circuit')[f].shift(-(i+1))
 
-    df.to_csv('data/selected_features_with_lags_leads.csv')
+    df.to_csv(lags_leads_file)
 
 
 generate_lags_and_leads(ols_filter_col)

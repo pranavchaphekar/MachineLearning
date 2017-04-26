@@ -11,6 +11,7 @@ import data_visualization as dv
 
 # Variable Declaration
 df = None
+features_selected = list()
 
 
 class Level:
@@ -27,7 +28,7 @@ run_logistic_regression = False
 
 def _filter_data_():
     sys.stdout.write(("\nFiltering data for legal area: " + db.legal_area).ljust(50))
-    #dp.read_and_process_vote_level_data()
+    # dp.read_and_process_vote_level_data()
     sys.stdout.write("--complete\n")
 
 
@@ -60,13 +61,16 @@ def _generate_level_files_():
         dp.aggregate_on_circuityear_level()
         sys.stdout.write("--complete\n")
 
+
 def _generate_expectations_at_circuityear_level_():
     sys.stdout.write("\nGenerating Expectations".ljust(50))
-    #dp.generate_expectations()
+    # dp.generate_expectations()
     sys.stdout.write("--complete\n")
+
 
 def _agg_cy_data_and_expectation_data():
     pass
+
 
 def _read_data_():
     global df
@@ -87,6 +91,7 @@ def _clean_data_(df):
 
 
 def _run_regression_():
+    global features_selected
     models = {}
     sys.stdout.write("\nRunning Regression".ljust(50))
     df = dp.read_circuityear_level_data()
@@ -107,7 +112,7 @@ def _run_regression_():
         df = dp.read_panel_level_data()
         _clean_data_(df)
         models[i] = mlt.fit_stat_model(df, features_selected)
-        i = i + 1
+        i += 1
     if Level.circuityear:
         df = dp.read_circuityear_level_data()
         _clean_data_(df)
@@ -116,11 +121,44 @@ def _run_regression_():
     sys.stdout.write("--complete\n")
 
 
+def _run_regression_for_lags_leads_():
+    global features_selected
+    df = dp.read_lags_leads_data()
+    models = {}
+    i = 1
+    models[0] = mlt.fit_stat_model(df, features_selected)
+
+    lag_features = list()
+    for itr in range(db.num_lags):
+        for feature in features_selected:
+            lag_features.append(feature + '_t' + str(itr + 1))
+        df_clean = df.dropna(subset=lag_features)
+        models[i] = mlt.fit_stat_model(df_clean, lag_features)
+        i += 1
+        lag_features = list()
+
+    lead_features = list()
+    for itr in range(db.num_leads):
+        for feature in features_selected:
+            lead_features.append(feature + '_f' + str(itr + 1))
+        df_clean = df.dropna(subset=lead_features)
+        models[i] = mlt.fit_stat_model(df_clean, lead_features)
+        i += 1
+        lead_features = list()
+
+    mlt.compare_and_print_statsmodels(models)
+
+
+def _generate_lags_leads_():
+    global features_selected
+    dp.generate_lags_and_leads(features_selected, db.num_lags, db.num_leads)
+
+
 def _generate_plots_():
     sys.stdout.write("\nGenerating Plots".ljust(50))
     df = dp.read_circuityear_level_data()
     df2 = dp.read_expectations_data()
-    dv.all_circuit_comparison(expected=df2,actual=df)
+    dv.all_circuit_comparison(expected=df2, actual=df)
     sys.stdout.write("--complete\n")
 
 
@@ -131,6 +169,8 @@ def pipeline():
     _generate_level_files_()
     _generate_expectations_at_circuityear_level_()
     _run_regression_()
+    _generate_lags_leads_()
+    _run_regression_for_lags_leads_()
     _generate_plots_()
 
 
