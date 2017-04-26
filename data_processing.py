@@ -38,9 +38,11 @@ def read_filtered_data_into_dataframe():
     df = pd.read_csv(filtered_char_data_path, low_memory=False)  # load into the data frame
     return df
 
+
 def read_handpicked_features_data_into_dataframe():
     df = pd.read_csv(handpicked_char_data_path, low_memory=False)  # load into the data frame
     return df
+
 
 def read_char_with_legal_data():
     df = pd.read_csv(char_with_legal_data, low_memory=False)  # load into the data frame
@@ -59,17 +61,16 @@ def read_case_ids():
     return cases
 
 
-
-
-
 ######################
 # Clean Data Methods
 ######################
 def clean_nan_values(df):
     return df.replace(np.nan, 0)
 
+
 def clean_na_values(df):
     return df.fillna(0)
+
 
 def handpick_features_from_char_data(df):
     """
@@ -78,8 +79,6 @@ def handpick_features_from_char_data(df):
     """
     df[features_to_use].to_csv(handpicked_char_data_path)
     return df[features_to_use]
-
-
 
 
 ######################
@@ -111,11 +110,13 @@ def gen_interactions(main_df, df1, df2, df1_col_name, df2_col_name):
     main_df[name_of_dataframe] = df1 * df2
     return main_df
 
+
 def merge_char_with_legal_data(df):
     df = pd.merge(df, read_case_ids(), on='caseid')
     del df['Unnamed: 0']
     df.to_csv(char_with_legal_data)
     return df
+
 
 ######################
 # Data Agregation Methods
@@ -212,7 +213,7 @@ def aggregate_on_circuityear_level():
     for col in X_star:
         f[col] = meanFun
 
-    df = df.groupby(["Circuit", "year"]).agg(f)
+    df = df.groupby(["Circuit", "year"], as_index=False).agg(f)
     # df = df.sort_values(sort_order)
 
     # Adding a NewColumn for Clustering CircuitXYear
@@ -220,21 +221,26 @@ def aggregate_on_circuityear_level():
 
     df.to_csv(circuityear_level_file)
 
+
 def read_judge_level_data():
     df = pd.read_csv(judge_level_file, low_memory=False)  # load into the data frame
     return df
+
 
 def read_panel_level_data():
     df = pd.read_csv(panel_level_file, low_memory=False)  # load into the data frame
     return df
 
+
 def read_circuityear_level_data():
     df = pd.read_csv(circuityear_level_file, low_memory=False)  # load into the data frame
     return df
 
+
 def read_expectations_data():
     df = pd.read_csv(generated_circuityear_expectations_file, low_memory=False)  # load into the data frame
     return df
+
 
 # This function splits the file into test and train data
 def split_into_train_and_test(df):
@@ -245,7 +251,7 @@ def split_into_train_and_test(df):
 
 
 #######################
-#] Epectations
+# Epectations
 #######################
 def generate_expectations():
     # Read the environmental data and keep only 2 columns which will be useful further.
@@ -314,8 +320,9 @@ def combine_with_env(df):
     df = pd.merge(df, df_environmental, on=keys, how='inner')
     return df
 
+
 def group_on_circuit_year(df):
-    #X_* Features
+    # X_* Features
     filter_col = [col for col in list(df) if col.startswith('x_')]
     sumFun = lambda x: x.sum()
     f = {}
@@ -333,3 +340,29 @@ def group_on_circuit_year(df):
         del df[count_ones]
         del df[total]
     return df
+
+
+#######################
+# Lags and Leads
+#######################
+def generate_lags_and_leads(features, n_lags=1, n_leads=1):
+    df = read_circuityear_level_data()
+    keys = ['Circuit', 'year']
+    df.sort_values(keys)
+    keys.append(lawvar)
+    keys.extend(features)
+    df = df[keys]
+    for i in range(n_lags):
+        for f in features:
+            f_lag = f + '_t' + str(i + 1)
+            df[f_lag] = df.groupby('Circuit')[f].shift(1)
+
+    for i in range(n_leads):
+        for f in features:
+            f_lag = f + '_f' + str(i + 1)
+            df[f_lag] = df.groupby('Circuit')[f].shift(-1)
+
+    df.to_csv('data/selected_features_with_lags_leads.csv')
+
+
+generate_lags_and_leads(ols_filter_col)
