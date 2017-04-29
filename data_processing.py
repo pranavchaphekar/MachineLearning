@@ -3,6 +3,7 @@ import pandas as pd
 import sys
 import numpy as np
 from dashboard import *
+from sklearn.ensemble import ExtraTreesClassifier
 
 
 def read_and_process_vote_level_data():
@@ -163,6 +164,8 @@ def aggregate_on_judge_level(df):
             df_subset_dataframe = gen_interactions(df_subset_dataframe, df1, df2, feature, other_feature)
 
     result = pd.concat([df_subset_non_interactions, df_subset_dataframe], axis=1)
+    result['judge_opinion'] = 1 - result['dissentvote']  # not dissent
+    result = result.fillna(0)
     # Order of elements, Sorting
     sort_order = ['Circuit', 'year', 'month']
     # Sorting by the column enteries and store that in result dataframe
