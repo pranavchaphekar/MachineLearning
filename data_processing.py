@@ -412,4 +412,16 @@ def text_features_for_lawvar_cases():
     print(len(list(text_df)))
     return text_df
 
+def merge_text_features(df):
+    '''
+    Merges text features with a data frame on the basis
+    of a case id.
+    :return: dataframe conatining merged features
+    '''
+    text_features =  text_features_for_lawvar_cases()
+    df = pd.merge(df, text_features, on='caseid')
+    df.to_csv(char_with_text_features)
+    return df
+
+
 #text_features_for_lawvar_cases()

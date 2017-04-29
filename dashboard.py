@@ -33,6 +33,7 @@ text_feature_files_dir = 'data/cleaned/textfeatures'
 judge_level_file = 'data/judge_level_agg.csv'
 panel_level_file = 'data/panel_level_agg.csv'
 circuityear_level_file = 'data/circuityear_level_agg.csv'
+char_with_text_features = 'data/char_with_text_features.csv'
 
 
 #Graphs
