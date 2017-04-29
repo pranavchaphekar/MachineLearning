@@ -3,6 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import time
 import seaborn as sns
+import dashboard as db
 
 from matplotlib.ticker import MultipleLocator
 
@@ -17,8 +18,15 @@ class DataVisualization():
                     (227, 119, 194), (247, 182, 210), (127, 127, 127), (199, 199, 199),
                     (188, 189, 34), (219, 219, 141), (23, 190, 207), (158, 218, 229)]
 
-    def init(self):
+    def __init__(self,num_plots=2,grid_i=1,grid_j=1):
         print("Something")
+        #self.f,self.sub_plt = plt.subplots(ncols=num_plots)
+        self.i = -1
+        self.j= -1
+        self.f, self.axarr = plt.subplots(grid_i, grid_j)
+        plt.axis('tight')
+        #plt.subplots_adjust(left=0.8, right=0.9, top=0.9, bottom=0.8)
+        #self.f.tight_layout()  # Or equivalently,  "plt.tight_layout()"
         # self.scale_colors()
 
     def scale_colors(self):
@@ -30,94 +38,51 @@ class DataVisualization():
             # self.color_pallet[i] = "#"+struct.pack('BBB',*rgb).encode('hex')
 
     def set_label(self, x_label,y_label):
-        self.ax.set(xlabel=x_label, ylabel=y_label)
+        rect = 10, 10, 10,10
+        self.f.add_axes(rect, label='axes1')
+        self.f.add_axes(rect, label='axes2')
 
-    def scatter_plot(self, x, y,df):
-        '''
-         plt.scatter(x, y)
-        self.ax = plt.subplot(111)
-        self.ax.spines["top"].set_visible(False)
-        self.ax.spines["right"].set_visible(False)
-        self.ax.grid(alpha=0.3)
-        self.ax.spines['bottom'].set_linewidth(0.5)
-        self.ax.spines['left'].set_linewidth(0.5)
-        #loc = MultipleLocator(100)  # this locator puts ticks at regular intervals
-        #self.ax.xaxis.set_major_locator(loc)
-        #self.ax.fill_between(x, 0, y, alpha=0.1)
-        #plt.plot(lw=2)
-        '''
-        sns.set(color_codes=True)
-        self.ax = sns.regplot(x=x, y=y, data=df)
+    def scatter_plot(self, x, y,df,fit_reg=False):
+        self.axarr[self.i,(self.j)%4].scatter(df[x], df[y],s=2)
+        self.axarr[self.i, (self.j) % 4].set_title("Circuit "+str(self.j+1), size=8)
+        self.axarr[self.i, (self.j) % 4].tick_params(labelsize=6)
+        if(fit_reg):
+            self.axarr[self.i, (self.j)%4].plot(df[x], df[y],linewidth=0.7,color="red")
+
+    def pointplot(self, x, y,df,):
+        self.ax = sns.pointplot(x=x, y=y, data=df)
+
+    def increment(self):
+        self.j = self.j + 1
+        self.i = int((self.j) / 4)
+        #print("j:" + str(self.j))
+        #print("i:" + str(self.i) + " j:" + str(self.j % 4))
 
     def set_title(self,title):
-        plt.suptitle(title, fontsize=15)
+        plt.suptitle(title, fontsize=12)
+
+    def set_y_axis_label(self,label,axis,left=True):
+        plt.set_ylabel(label)
+        if axis == "x" and left:
+            plt.yaxis.set_label_position("left")
+        if axis == "x" and not left:
+            plt.yaxis.set_label_position("right")
 
     def show_plot(self):
+        self.f.tight_layout()
         plt.show()
 
     def bar_chart(self, save=False):
         import random
         data = random.sample(range(1, 100000), 100)
         data2 = random.sample(range(1, 200000), 100)
-
-        print(self.color_pallet)
-
         ax, plt = self.set_plot_properties()
 
         from random import randint
         plt.hist(list(data) + list(data2),
                  color=self.color_pallet[randint(0, len(self.color_pallet) - 1)], bins=100)
 
-        plt.text(1300, -5000, "DSGA3003 Project |\
-                              sm7029 | avm358 | pc2310", fontsize=10)
         plt.show()
-
-    def line_curve(self, data, captions, x_column, heading=None, xlimit=None, ylimit=None, ):
-        self.scale_colors()
-        plt.figure(figsize=(12, 14))
-
-        ax = plt.subplot(111)
-        ax.spines["top"].set_visible(False)
-        ax.spines["bottom"].set_visible(False)
-        ax.spines["right"].set_visible(False)
-        ax.spines["left"].set_visible(False)
-
-        ax.get_xaxis().tick_bottom()
-        ax.get_yaxis().tick_left()
-
-        if ylimit is not None:
-            plt.ylim(ylimit[0], ylimit[1])
-        if xlimit is not None:
-            plt.xlim(xlimit[0], xlimit[1])
-
-        # plt.yticks(range(0, 91, 10), [str(x) + "%" for x in range(0, 91, 10)], fontsize=14)
-        plt.yticks(fontsize=14)
-        plt.xticks(fontsize=14)
-
-        plt.tick_params(axis="both", which="both", bottom="off", top="off",
-                        labelbottom="on", left="off", right="off", labelleft="on")
-
-        y_pos = 0.0
-        i = 0
-        if captions is not None:
-            for rank, column in enumerate(captions):
-                plt.plot(data[x_column].values,
-                         data[column.replace("\n", " ")].values,
-                         lw=2.5, color=self.color_pallet[rank])
-
-                y_pos = data[column.replace("\n", " ")].values[-1] - 0.5
-                y_pos += 0.8
-                plt.text(2011.5, y_pos, column, fontsize=14, color=self.color_pallet[rank])
-                i = i + 1
-
-        # matplotlib's title() call centers the title on the plot, but not the graph,
-        # Here used text() call to customize where the title goes.
-        if heading is not None:
-            plt.text(1995, 93, heading, fontsize=17, ha="center")
-
-        plt.text(1966, -8, "\nDSGA3110 Project"
-                           "\nsm7029 | avm358 | pc2310", fontsize=10)
-        plt.savefig(str(time.time()) + "_line.png", bbox_inches="tight")
 
     def set_plot_properties(self, ax, plt):
         # plt.spines["top"].set_visible(False)
@@ -134,6 +99,19 @@ class DataVisualization():
 
     def save_plot(self):
         plt.savefig("images/" + str(time.time()) + ".png", bbox_inches="tight");
+
+def all_circuit_comparison(expected,actual):
+    for k,v in db.all_circuit_actual_expected_comparison.items():
+        d = DataVisualization(grid_i=4, grid_j=4)
+        d.set_title("Random Variation by Circuit: "+str(k))
+        for i in range(1, 13):
+            #print('Circuit: '+str(i))
+            d.increment()
+            d1 = actual[actual['Circuit'] == i]
+            d2 = expected[expected['Circuit'] == i]
+            d.scatter_plot("year", v, d1, False)
+            d.scatter_plot("year", "e_"+v, d2, True)
+        d.show_plot()
 
 def __test__():
     a = ['Health Professions', 'Public Administration', 'Education', 'Psychology',
