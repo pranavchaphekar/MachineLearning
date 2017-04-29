@@ -18,6 +18,7 @@ panel_level_grouping_columns = ['caseid', 'Circuit', 'year', 'month', 'govt_wins
 # Regression Variables
 train_test_split = 0.8
 epectations_generated = True
+pca_components = 10 #can be a number or n_components == min(n_samples, n_features) if None or can be 'mle'
 
 # Input Files
 characteristic_data_path = 'data/BloombergVOTELEVEL_Touse.dta'

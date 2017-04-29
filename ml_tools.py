@@ -5,6 +5,7 @@ import statsmodels.api as sm
 from sklearn.feature_selection import SelectFromModel
 from sklearn.linear_model import LassoCV
 from statsmodels.iolib import SimpleTable
+from sklearn.decomposition import PCA
 
 from dashboard import *
 
@@ -145,3 +146,15 @@ def compare_and_print_statsmodels(estimators, indice=0):
             raise 'waiting for a dictionnary for estimators parameter'
     else:
         raise 'Not working for the coeff table'
+
+
+def pca_on_text_features(df):
+    '''
+    :param df: High dimensional dataframe on which pca
+               is performend
+    :return: top n components as mentioned in the dashboard
+              file
+    '''
+    pca = PCA(n_components=pca_components)
+    pca.fit()
+    return pca.components_
