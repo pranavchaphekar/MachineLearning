@@ -27,11 +27,13 @@ char_with_legal_data = 'data/char_with_legal_data.csv'
 lawvar_caseid_decision_file = 'data/govt_winner.pkl'  # Maps Case with boolean(0-1) decision of Lawvar Cases
 generated_circuityear_expectations_file = 'data/final_filtered.csv'
 lags_leads_file = 'data/selected_features_with_lags_leads.csv'
+text_feature_files_dir = 'data/cleaned/textfeatures'
 
 # Output Files
 judge_level_file = 'data/judge_level_agg.csv'
 panel_level_file = 'data/panel_level_agg.csv'
 circuityear_level_file = 'data/circuityear_level_agg.csv'
+char_with_text_features = 'data/char_with_text_features.csv'
 
 
 #Graphs
