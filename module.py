@@ -3,6 +3,7 @@ import pandas as pd
 import sys
 import numpy as np
 from sklearn.cross_decomposition import PLSRegression, PLSCanonical
+from sklearn.ensemble import ExtraTreesClassifier
 from sklearn.linear_model import LinearRegression, ElasticNet, SGDClassifier, LogisticRegression, ElasticNetCV
 from dashboard import *
 import statsmodels.api as sm
@@ -451,7 +452,7 @@ def actual_number_of_judges_circuit(circuit_no):
 # This function splits the file into test and train data
 def split_into_train_and_test(data_path):
     df = pd.read_csv(data_path, low_memory=False)  # load into the data frame
-    msk = np.random.rand(len(df)) < 0.8
+    msk = np.random.rand(len(df)) < 1
     train = df[msk]
     test = df[~msk]
     return train, test
@@ -462,35 +463,51 @@ def split_into_train_and_test(data_path):
 def lasso_for_feature_selection(df, target='govt_wins'):
     characteristics_cols = [col for col in list(df) if col.startswith('x_')]
     X, y = df[characteristics_cols].fillna(0), df[target]
-    clf = LassoCV()
-    sfm = SelectFromModel(clf, threshold=0.15)
+    clf = ElasticNet()
+    sfm = SelectFromModel(clf, threshold= 0 )
     sfm.fit(X, y)
-    print(sfm.transform(X).shape[1])
-    print([x for (x, y) in zip(characteristics_cols, sfm.get_support()) if y == True])
 
-
-def random_forest_for_feature_selection(df, target = 'govt_wins'):
-    characteristics_col = [col for col in list(df) if col.startswith('x_')]
-    X, y = df[characteristics_col].fillna(0), df[target]
-    del df['Unnamed: 0']
-    model = ElasticNetCV(l1_ratio=[.01, .1,.5,.7,.9, .99, 1], n_alphas=20, n_jobs=4,
-              selection='random', max_iter=3000, tol=1e-6)
-    sfm = SelectFromModel(model, threshold=0.05)
-    print(X.shape)
-    sfm.fit(X, y)
     n_features = sfm.transform(X).shape[1]
 
     # Reset the threshold till the number of features equals two.
     # Note that the attribute can be set directly instead of repeatedly
     # fitting the metatransformer.
     while n_features > 5:
-        sfm.threshold += 0.01
+        sfm.threshold += 0.0001
         X_transform = sfm.transform(X)
         n_features = X_transform.shape[1]
-    # print(sfm.transform(X).shape[1])
-    print([x for (x, y) in zip(characteristics_col, sfm.get_support()) if y == True])
 
-    # importances = model.feature_importances_
+    features_selected = [x for (x, y) in zip(characteristics_cols, sfm.get_support()) if y == True]
+    print(features_selected)
+    return features_selected
+
+
+def random_forest_for_feature_selection(df, target = 'govt_wins'):
+    characteristics_col = [col for col in list(df) if col.startswith('x_')]
+    X, y = df[characteristics_col].fillna(0), df[target]
+    # del df['Unnamed: 0']
+    enetcv = ElasticNetCV(tol=1e-2)
+    # enetcv.fit(X, y)
+    # print(enetcv.coef_)
+    sfm = SelectFromModel(enetcv, threshold = -3 )
+    sfm.fit(X, y)
+
+    n_features = sfm.transform(X).shape[1]
+
+    # Reset the threshold till the number of features equals two.
+    # Note that the attribute can be set directly instead of repeatedly
+    # fitting the metatransformer.
+    while n_features > 5:
+        sfm.threshold += 0.0001
+        X_transform = sfm.transform(X)
+        n_features = X_transform.shape[1]
+
+    features_selected = [x for (x, y) in zip(characteristics_col, sfm.get_support()) if y == True]
+    print(features_selected)
+    return features_selected
+
+
+        # importances = model.feature_importances_
     # std = np.std([tree.feature_importances_ for tree in model.estimators_],
     #              axis=0)
     # indices = np.argsort(importances)[::-1]
@@ -516,7 +533,7 @@ def random_forest_for_feature_selection(df, target = 'govt_wins'):
 # lvl_panel()
 # split_into_train_and_test()
 # lvl_circuityear()
-train, test = split_into_train_and_test('data/result_judge.csv')
+# train, test = split_into_train_and_test('data/result_panel.csv')
 # # regress(train, test)
 
 # model_judge_lvl = fit_stat_model(train, 'judge_opinion')
@@ -527,10 +544,11 @@ train, test = split_into_train_and_test('data/result_judge.csv')
 # test_stat_model(model_panel_lvl, train, test, 'govt_wins')
 
 # df = pd.read_csv('data/result_panel.csv', low_memory=False)  # load into the data frame
-# lasso_for_feature_selection(df)
+# lasso_for_feature_selection(train)
 # actual_number_of_judges_circuit(8)
 # group_and_aggregate()
 # read_data_for_appending_e()
 # merge_expectations_with_lvl_circuit()
 # merge_for_panel()
-random_forest_for_feature_selection(train)
+# random_forest_for_feature_selection(train)
+# read_court_rulings()

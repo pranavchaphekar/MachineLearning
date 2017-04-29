@@ -8,6 +8,7 @@ import pandas as pd
 import sys
 import numpy as np
 from dashboard import *
+from sklearn.ensemble import ExtraTreesClassifier
 
 
 ######################
@@ -123,6 +124,29 @@ def merge_char_with_legal_data(df):
     return df
 
 
+def merge_expectations_with_lvl_circuit(df2):
+    df1 = pd.read_csv('concat1.csv')
+    df = pd.merge(df1, df2, on=['Circuit', 'year'], how="inner")
+
+    # drops the duplicate _y cols
+    to_drop = [x for x in df if x.endswith('_y')]
+    df.drop(to_drop, axis=1, inplace=True)
+    # trim _x
+    for col in df:
+        if col.endswith('_x'):
+            df.rename(columns={col: col.rstrip('_x')}, inplace=True)
+
+    del df['Unnamed: 0']
+    df = df.sort_values(['Circuit', 'year'])
+    return df
+
+def merge_with_dummies(df):
+    df_dummies = pd.get_dummies(df['Circuit'])
+    df = pd.concat([df, df_dummies], axis=1)
+    df_dummies = pd.get_dummies(df['year'])
+    df = pd.concat([df,df_dummies],axis=1)
+    return df
+
 ######################
 # Data Agregation Methods
 ######################
@@ -153,6 +177,8 @@ def aggregate_on_judge_level(df):
             df_subset_dataframe = gen_interactions(df_subset_dataframe, df1, df2, feature, other_feature)
 
     result = pd.concat([df_subset_non_interactions, df_subset_dataframe], axis=1)
+    result['judge_opinion'] = 1 - result['dissentvote']  # not dissent
+    result = result.fillna(0)
     # Order of elements, Sorting
     sort_order = ['Circuit', 'year', 'month']
     # Sorting by the column enteries and store that in result dataframe
@@ -220,8 +246,11 @@ def aggregate_on_circuityear_level():
     df = df.groupby(["Circuit", "year"], as_index=False).agg(f)
     # df = df.sort_values(sort_order)
 
-    # Adding a NewColumn for Clustering CircuitXYear
-    # df['circuitXyear'] = df.Circuit.astype(str).str.cat(df.year.astype(str), sep='X')
+    # Add the expectations
+    df = merge_expectations_with_lvl_circuit(df)
+
+    # Merge with Dummies
+    df = merge_with_dummies(df)
 
     df.to_csv(circuityear_level_file)
 
