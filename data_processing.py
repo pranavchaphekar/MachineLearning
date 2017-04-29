@@ -1,4 +1,9 @@
+import os
 import pickle
+from collections import Counter
+from glob import glob
+from zipfile import ZipFile
+
 import pandas as pd
 import sys
 import numpy as np
@@ -240,6 +245,7 @@ def read_expectations_data():
     df = pd.read_csv(generated_circuityear_expectations_file, low_memory=False)  # load into the data frame
     return df
 
+
 def read_lags_leads_data():
     df = pd.read_csv(lags_leads_file, low_memory=False)
     return df
@@ -358,14 +364,52 @@ def generate_lags_and_leads(features, n_lags=1, n_leads=1):
     for i in range(n_lags):
         for f in features:
             f_lag = f + '_t' + str(i + 1)
-            df[f_lag] = df.groupby('Circuit')[f].shift(i+1)
+            df[f_lag] = df.groupby('Circuit')[f].shift(i + 1)
 
     for i in range(n_leads):
         for f in features:
             f_lag = f + '_f' + str(i + 1)
-            df[f_lag] = df.groupby('Circuit')[f].shift(-(i+1))
+            df[f_lag] = df.groupby('Circuit')[f].shift(-(i + 1))
 
     df.to_csv(lags_leads_file)
 
 
-generate_lags_and_leads(ols_filter_col)
+#generate_lags_and_leads(ols_filter_col)
+
+#######################
+# Text Features
+#######################
+
+def text_features_for_lawvar_cases():
+    '''
+    Assumes the text features are present in year wise zip files
+    containing case number wise pickle files.
+    :return: data frame containing
+    '''
+    zipfiles = glob('./'+text_feature_files_dir+'/*zip')
+    lawvar_case_ids = read_case_ids()
+    text_df = pd.DataFrame()
+    text_df['caseid'] = lawvar_case_ids['caseid']
+    lawvar_case_ids = set(lawvar_case_ids['caseid'])
+    print(lawvar_case_ids)
+    for zfname in zipfiles:
+        zfile = ZipFile(zfname)
+        year = zfname.split('/')[-1][:-4]
+        members = zfile.namelist()
+        #threshold = len(members) / 200
+        #docfreqs = Counter()
+        for fname in members:
+            if not fname.endswith('-maj.p'):
+                continue
+            docid = fname.split('/')[-1][:-6]
+            if docid in lawvar_case_ids:
+                text = pickle.load(zfile.open(fname))
+                for citation,num_citation in text.items():
+                    if citation not in text_df:
+                        text_df[citation] = 0
+                    row = text_df[text_df['caseid'] == docid].index
+                    text_df.set_value(row, citation, num_citation)
+    print(len(list(text_df)))
+    return text_df
+
+#text_features_for_lawvar_cases()
