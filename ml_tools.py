@@ -5,6 +5,8 @@ import statsmodels.api as sm
 from sklearn.feature_selection import SelectFromModel
 from sklearn.linear_model import LassoCV
 from statsmodels.iolib import SimpleTable
+import statsmodels.formula.api as smf
+
 
 from dashboard import *
 
@@ -32,6 +34,7 @@ def ols_sklearn(train, test):
     print('R-sq: ' + str(linear_reg.score(train[ols_filter_col], train[target])))
     print('in sample mse: ' + str(np.mean(predicted_insample - expected_insample) ** 2))
     print('out sample mse: ' + str(np.mean(predicted_outsample - expected_outsample) ** 2))
+
 
 
 def fit_stat_model(df, filter_col, target=lawvar):
@@ -80,7 +83,9 @@ def test_stat_model(model, insample, outsample):
 # We can use class sklearn.pipeline.Pipeline(steps)
 def feature_selection(df, target=lawvar, model = LassoCV()):
     characteristics_cols = [col for col in list(df) if col.startswith('x_')]
-    X, y = df[characteristics_cols], df[target]
+    # characteristics_cols += [col for col in list(df) if col.startswith('e_x_')]
+    # characteristics_cols += [col for col in list(df) if col.startswith('dummy_')]
+    X, y = df[characteristics_cols].fillna(0), df[target]
     # clf = LassoCV()
     # Use ExtraTreesClassifier() for Random Forest
     sfm = SelectFromModel(model, threshold=0)

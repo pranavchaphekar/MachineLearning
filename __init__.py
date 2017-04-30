@@ -20,7 +20,7 @@ class Level:
 
 # Run Parameters
 run_level = Level.circuityear
-run_lasso = False  # chooses handpicked variables if False or lasso chooses the features
+run_lasso = True  # chooses handpicked variables if False or lasso chooses the features
 run_random_forest = False
 run_elastic_net = False
 run_logistic_regression = False
@@ -60,6 +60,7 @@ def _generate_level_files_():
         sys.stdout.write("\nCircuit Year Level".ljust(50))
         dp.aggregate_on_circuityear_level()
         sys.stdout.write("--complete\n")
+
 
 
 def _generate_expectations_at_circuityear_level_():
@@ -164,7 +165,7 @@ def pipeline():
     _handpick_features_from_filtered_data_()
     _merge_instruments_z_x_()
     _generate_level_files_()
-    _generate_expectations_at_circuityear_level_()
+    # _generate_expectations_at_circuityear_level_()
     _run_regression_()
     _generate_lags_leads_()
     _run_regression_for_lags_leads_()

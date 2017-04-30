@@ -9,6 +9,8 @@ import sys
 import numpy as np
 from dashboard import *
 from sklearn.ensemble import ExtraTreesClassifier
+import statsmodels.formula.api as smf
+
 
 
 ######################
@@ -141,9 +143,9 @@ def merge_expectations_with_lvl_circuit(df2):
     return df
 
 def merge_with_dummies(df):
-    df_dummies = pd.get_dummies(df['Circuit'])
+    df_dummies = pd.get_dummies(df['Circuit'],prefix="dummy")
     df = pd.concat([df, df_dummies], axis=1)
-    df_dummies = pd.get_dummies(df['year'])
+    df_dummies = pd.get_dummies(df['year'],prefix="dummy")
     df = pd.concat([df,df_dummies],axis=1)
     return df
 
@@ -454,3 +456,4 @@ def merge_text_features(df):
 
 
 #text_features_for_lawvar_cases()
+
