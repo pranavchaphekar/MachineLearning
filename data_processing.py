@@ -129,7 +129,7 @@ def merge_char_with_legal_data(df):
 
 
 def merge_expectations_with_lvl_circuit(df2):
-    df1 = pd.read_csv(panel_level_file)
+    df1 = pd.read_csv("concat1.csv")
     df = pd.merge(df1, df2, on=['Circuit', 'year'], how="inner")
 
     # drops the duplicate _y cols
@@ -140,6 +140,13 @@ def merge_expectations_with_lvl_circuit(df2):
         if col.endswith('_x'):
             df.rename(columns={col: col.rstrip('_x')}, inplace=True)
 
+    # del df['Unnamed: 0']
+    df = df.sort_values(['Circuit', 'year'])
+    return df
+
+def merge_expectations_with_lvl_panel(df2):
+    df1 = pd.read_csv('concat1.csv')
+    df = pd.merge(df2, df1, on=['Circuit', 'year'])
     del df['Unnamed: 0']
     df = df.sort_values(['Circuit', 'year'])
     return df
@@ -205,7 +212,12 @@ def aggregate_on_panel_level():
         high_dem_col = [col for col in list(df) if col.startswith('pca_')]
         for col in high_dem_col:
             f[col] = meanFun
-    grouped = df.groupby(panel_level_grouping_columns).agg(f)
+    grouped = df.groupby(panel_level_grouping_columns, as_index=False).agg(f)
+
+    grouped = merge_expectations_with_lvl_panel(grouped)
+
+    grouped = merge_with_dummies(grouped)
+    
     grouped.to_csv(panel_level_file)
 
 
@@ -462,7 +474,7 @@ def merge_text_features_and_save(df,filename):
     of a case id.
     :return: dataframe conatining merged features
     '''
-    #text_features =  text_features_for_lawvar_cases()
+    # text_features =  text_features_for_lawvar_cases()
     text_features = pd.read_csv(char_with_text_features,low_memory=False,index_col=0)
     pca_comp =  pca_on_text_features(text_features)
     pca_comp = pca_comp.transpose()
