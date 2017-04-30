@@ -7,6 +7,8 @@ lawvar = "govt_wins"
 case_type = 'govt_environ'
 num_lags = 2
 num_leads = 2
+run_high_dimensional = True
+
 
 # Feature and Grouping Filters
 features_to_use = ['caseid', 'year', 'Circuit', 'month', 'songername', 'x_dem', 'x_republican',

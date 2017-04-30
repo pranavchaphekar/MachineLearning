@@ -20,7 +20,7 @@ class Level:
 
 # Run Parameters
 run_level = Level.circuityear
-run_lasso = False  # chooses handpicked variables if False or lasso chooses the features
+run_lasso = True  # chooses handpicked variables if False or lasso chooses the features
 run_random_forest = False
 run_elastic_net = False
 run_logistic_regression = False
@@ -50,7 +50,9 @@ def _generate_level_files_():
     df = dp.read_char_with_legal_data()
     sys.stdout.write("\nAggregating Data".ljust(50))
     sys.stdout.write("\nJudge Level".ljust(50))
-    dp.aggregate_on_judge_level(df)
+    df = dp.aggregate_on_judge_level(df)
+    if db.run_high_dimensional:
+        dp.merge_text_features_and_save(df,db.judge_level_file)
     sys.stdout.write("--complete" + ' ')
     if run_level != Level.judge:
         sys.stdout.write("\nPanel Level".ljust(50))
@@ -94,6 +96,9 @@ def _run_regression_():
     df = dp.read_circuityear_level_data()
     train, test = dp.split_into_train_and_test(df)
     # mlt.ols_sklearn(train, test)
+    target = db.lawvar
+    if db.run_high_dimensional:
+        target = [col for col in list(df) if col.startswith('pca_')]
     features_selected = db.ols_filter_col
     if run_lasso:
         features_selected = mlt.feature_selection(df, LassoCV())
@@ -108,12 +113,12 @@ def _run_regression_():
     if Level.panel or Level.circuityear:
         df = dp.read_panel_level_data()
         _clean_data_(df)
-        models[i] = mlt.fit_stat_model(df, features_selected)
+        models[i] = mlt.fit_stat_model(df, features_selected,target=target)
         i += 1
     if Level.circuityear:
         df = dp.read_circuityear_level_data()
         _clean_data_(df)
-        models[i] = mlt.fit_stat_model(df, features_selected)
+        models[i] = mlt.fit_stat_model(df, features_selected,target=target)
     mlt.compare_and_print_statsmodels(models)
     sys.stdout.write("--complete\n")
 
