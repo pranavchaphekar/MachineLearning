@@ -6,7 +6,7 @@ from sklearn.feature_selection import SelectFromModel
 from sklearn.linear_model import LassoCV
 from statsmodels.iolib import SimpleTable
 from sklearn.decomposition import PCA
-
+from sklearn.cross_decomposition import PLSRegression
 from dashboard import *
 
 
@@ -151,10 +151,23 @@ def compare_and_print_statsmodels(estimators, indice=0):
 def pca_on_text_features(df):
     '''
     :param df: High dimensional dataframe on which pca
-               is performend
+               is performed
     :return: top n components as mentioned in the dashboard
               file
     '''
     pca = PCA(n_components=pca_components)
-    pca.fit()
+    df = df.transpose()
+    pca.fit_transform(df)
     return pca.components_
+
+def pls_regression_on_text_features(df):
+    '''
+    :param df: High dimensional dataframe on which pca
+               is performed
+    :return: top n components as mentioned in the dashboard
+              file
+    '''
+    pls = PLSRegression(n_components=pca_components)
+    df = df.transpose()
+    pls.fit_transform(df)
+    return pls.components_
