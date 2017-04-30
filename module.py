@@ -10,6 +10,8 @@ import statsmodels.api as sm
 from sklearn.feature_selection import SelectFromModel
 from sklearn.linear_model import LassoCV
 import data_visualization as d
+import statsmodels.formula.api as smf
+
 
 
 
@@ -187,9 +189,10 @@ def read_environmental_law_indicator():
     :return: 
     '''
     df = pickle.load(open('data/govt_winner.pkl', 'rb'))
-    environ_cases = df[df['govt_environ'] == 1]
-    environ_cases = environ_cases[['caseid', 'govt_wins']]
-    return environ_cases
+    df.to_csv('govt_winner.csv')
+    # environ_cases = df[df['govt_environ'] == 1]
+    # environ_cases = environ_cases[['caseid', 'govt_wins']]
+    # return environ_cases
 
 
 def cleaned_CSV():
@@ -284,10 +287,19 @@ def lvl_panel():
     f['num_judges'] = countFun
     for col in filter_col:
         f[col] = meanFun
-    grouped = df.groupby(['caseid', 'Circuit', 'year', 'month', 'govt_wins']).agg(f)
+    grouped = df.groupby(['caseid', 'Circuit', 'year', 'month', 'govt_wins'], as_index=False).agg(f)
     # grouped = grouped[filter_col].apply(lambda x: (x == 1).sum()/len(x))
+    grouped = merge_with_dummies(grouped)
+
     grouped.to_csv('data/result_panel.csv')
 
+
+def merge_with_dummies(df):
+    df_dummies = pd.get_dummies(df['Circuit'], prefix="dummy")
+    df = pd.concat([df, df_dummies], axis=1)
+    df_dummies = pd.get_dummies(df['year'], prefix="dummy")
+    df = pd.concat([df, df_dummies], axis=1)
+    return df
 
 def regress(train, test):
     # df = pd.read_csv('data/result_panel.csv', low_memory=False)  # load into the data frame
@@ -462,8 +474,10 @@ def split_into_train_and_test(data_path):
 
 def lasso_for_feature_selection(df, target='govt_wins'):
     characteristics_cols = [col for col in list(df) if col.startswith('x_')]
+    # characteristics_cols += [col for col in list(df) if col.startswith('e_x_')]
+    # characteristics_cols += [col for col in list(df) if col.startswith('dummy_')]
     X, y = df[characteristics_cols].fillna(0), df[target]
-    clf = ElasticNet()
+    clf = LassoCV()
     sfm = SelectFromModel(clf, threshold= 0 )
     sfm.fit(X, y)
 
@@ -506,6 +520,32 @@ def random_forest_for_feature_selection(df, target = 'govt_wins'):
     print(features_selected)
     return features_selected
 
+def clustering_SE():
+    df = pd.read_csv('data/circuityear_level_agg.csv')
+    del df['Unnamed: 0']
+    y = df['govt_wins']
+    X = df
+    del X['Circuit']
+    del X['year']
+    # # print(list(X))
+    # X.drop('Circuit', axis=1, inplace=True)
+    # X.drop('year', axis=1, inplace=True)
+    # # # del df['govt_wins']
+    # cols_to_iterate = df.columns.values.tolist()
+    # cols_to_iterate.remove('Circuit')
+    # cols_to_iterate.remove('year')
+    # cols = cols_to_iterate[0]
+    # del cols_to_iterate[0]
+    # for col_name in cols_to_iterate:
+    #          cols = cols + " + " + col_name
+    # cols = cols + "C(Circuit)"
+    # my_formula = "govt_wins ~ " + cols
+    model = sm.OLS(y, X).fit()
+    # model = smf.ols(formula='govt_wins ~ C(Circuit) + C(year) + x_dem + x_noreligion ', data=df)
+    # print(model.summary())
+    # result = model.fit(cov_type='cluster', cov_kwds={'groups': (df['Circuit'], df['year'])})
+    print(model.summary())
+
 
         # importances = model.feature_importances_
     # std = np.std([tree.feature_importances_ for tree in model.estimators_],
@@ -530,17 +570,17 @@ def random_forest_for_feature_selection(df, target = 'govt_wins'):
 # cleaned_CSV()
 # add_X_col()
 # lvl_judge()
-# lvl_panel()
+lvl_panel()
 # split_into_train_and_test()
 # lvl_circuityear()
-# train, test = split_into_train_and_test('data/result_panel.csv')
+train, test = split_into_train_and_test('data/result_panel.csv')
 # # regress(train, test)
 
 # model_judge_lvl = fit_stat_model(train, 'judge_opinion')
 # model_panel_lvl = fit_stat_model(train, 'govt_wins')
 
 # test_stat_model(model_judge_lvl, train, test, 'judge_opinion')
-# lasso_for_feature_selection(train)
+lasso_for_feature_selection(train)
 # test_stat_model(model_panel_lvl, train, test, 'govt_wins')
 
 # df = pd.read_csv('data/result_panel.csv', low_memory=False)  # load into the data frame
@@ -552,3 +592,5 @@ def random_forest_for_feature_selection(df, target = 'govt_wins'):
 # merge_for_panel()
 # random_forest_for_feature_selection(train)
 # read_court_rulings()
+# read_environmental_law_indicator()
+# clustering_SE()
