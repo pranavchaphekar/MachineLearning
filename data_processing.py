@@ -9,6 +9,7 @@ import sys
 import numpy as np
 from dashboard import *
 from sklearn.ensemble import ExtraTreesClassifier
+from ml_tools import pca_on_text_features,pls_regression_on_text_features
 import statsmodels.formula.api as smf
 
 
@@ -99,7 +100,7 @@ def merge_with_legal_area_data(df, legal_area_data):
     :return:
     """
     # df = pd.read_csv('filtered_subset.csv')
-    df = pd.merge(df, legal_area_data, on='caseid')
+    df = pd.merge(df, legal_area_data, on='caseid', index=False)
     df.to_csv(char_with_legal_data)
     return df
 
@@ -122,12 +123,13 @@ def gen_interactions(main_df, df1, df2, df1_col_name, df2_col_name):
 def merge_char_with_legal_data(df):
     df = pd.merge(df, read_case_ids(), on='caseid')
     del df['Unnamed: 0']
+    df = df.drop_duplicates()
     df.to_csv(char_with_legal_data)
     return df
 
 
 def merge_expectations_with_lvl_circuit(df2):
-    df1 = pd.read_csv('concat1.csv')
+    df1 = pd.read_csv(panel_level_file)
     df = pd.merge(df1, df2, on=['Circuit', 'year'], how="inner")
 
     # drops the duplicate _y cols
@@ -186,12 +188,12 @@ def aggregate_on_judge_level(df):
     # Sorting by the column enteries and store that in result dataframe
     result = result.sort_values(by=sort_order)
     result.to_csv(judge_level_file)
+    return result
 
 
 def aggregate_on_panel_level():
     df = pd.read_csv(judge_level_file, low_memory=False)  # load into the data frame
     filter_col = [col for col in list(df) if col.startswith('x_')]
-
     df.insert(5, 'num_judges', 1)
     countFun = lambda x: len(x)
     meanFun = lambda x: np.average(x)
@@ -199,6 +201,10 @@ def aggregate_on_panel_level():
     f['num_judges'] = countFun
     for col in filter_col:
         f[col] = meanFun
+    if run_high_dimensional:
+        high_dem_col = [col for col in list(df) if col.startswith('pca_')]
+        for col in high_dem_col:
+            f[col] = meanFun
     grouped = df.groupby(panel_level_grouping_columns).agg(f)
     grouped.to_csv(panel_level_file)
 
@@ -244,6 +250,11 @@ def aggregate_on_circuityear_level():
     f[lawvar] = sumFun
     for col in X_star:
         f[col] = meanFun
+
+    if run_high_dimensional:
+        high_dem_col = [col for col in list(df) if col.startswith('pca_')]
+        for col in high_dem_col:
+            f[col] = meanFun
 
     df = df.groupby(["Circuit", "year"], as_index=False).agg(f)
     # df = df.sort_values(sort_order)
@@ -419,9 +430,10 @@ def text_features_for_lawvar_cases():
     '''
     zipfiles = glob('./'+text_feature_files_dir+'/*zip')
     lawvar_case_ids = read_case_ids()
-    text_df = pd.DataFrame()
-    text_df['caseid'] = lawvar_case_ids['caseid']
-    lawvar_case_ids = set(lawvar_case_ids['caseid'])
+    lawvar_case_ids = lawvar_case_ids.caseid.unique()
+    text_df = pd.DataFrame(index=lawvar_case_ids)
+    #text_df['caseid'] = lawvar_case_ids['caseid']
+    lawvar_case_ids = set(lawvar_case_ids)
     print(lawvar_case_ids)
     for zfname in zipfiles:
         zfile = ZipFile(zfname)
@@ -429,6 +441,7 @@ def text_features_for_lawvar_cases():
         members = zfile.namelist()
         #threshold = len(members) / 200
         #docfreqs = Counter()
+
         for fname in members:
             if not fname.endswith('-maj.p'):
                 continue
@@ -438,22 +451,31 @@ def text_features_for_lawvar_cases():
                 for citation,num_citation in text.items():
                     if citation not in text_df:
                         text_df[citation] = 0
-                    row = text_df[text_df['caseid'] == docid].index
+                    row = text_df[text_df.index == docid].index
                     text_df.set_value(row, citation, num_citation)
-    print(len(list(text_df)))
+    text_df.to_csv(char_with_text_features)
     return text_df
 
-def merge_text_features(df):
+def merge_text_features_and_save(df,filename):
     '''
     Merges text features with a data frame on the basis
     of a case id.
     :return: dataframe conatining merged features
     '''
-    text_features =  text_features_for_lawvar_cases()
-    df = pd.merge(df, text_features, on='caseid')
-    df.to_csv(char_with_text_features)
+    #text_features =  text_features_for_lawvar_cases()
+    text_features = pd.read_csv(char_with_text_features,low_memory=False,index_col=0)
+    pca_comp =  pca_on_text_features(text_features)
+    pca_comp = pca_comp.transpose()
+    col_names = []
+    for i in range(pca_comp.shape[1]):
+        col_names.append('pca_'+str(i))
+    pca_comp = pd.DataFrame(pca_comp)
+    pca_comp.columns = col_names
+    pca_comp['caseid'] = read_case_ids().caseid.unique()
+    df.set_index(df['caseid'])
+    df = pd.merge(df,pca_comp,on='caseid')
+    df.to_csv(filename)
     return df
 
 
 #text_features_for_lawvar_cases()
-

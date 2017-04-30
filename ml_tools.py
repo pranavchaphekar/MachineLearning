@@ -8,6 +8,8 @@ from statsmodels.iolib import SimpleTable
 import statsmodels.formula.api as smf
 
 
+from sklearn.decomposition import PCA
+from sklearn.cross_decomposition import PLSRegression
 from dashboard import *
 
 
@@ -150,3 +152,28 @@ def compare_and_print_statsmodels(estimators, indice=0):
             raise 'waiting for a dictionnary for estimators parameter'
     else:
         raise 'Not working for the coeff table'
+
+
+def pca_on_text_features(df):
+    '''
+    :param df: High dimensional dataframe on which pca
+               is performed
+    :return: top n components as mentioned in the dashboard
+              file
+    '''
+    pca = PCA(n_components=pca_components)
+    df = df.transpose()
+    pca.fit_transform(df)
+    return pca.components_
+
+def pls_regression_on_text_features(df):
+    '''
+    :param df: High dimensional dataframe on which pca
+               is performed
+    :return: top n components as mentioned in the dashboard
+              file
+    '''
+    pls = PLSRegression(n_components=pca_components)
+    df = df.transpose()
+    pls.fit_transform(df)
+    return pls.components_
