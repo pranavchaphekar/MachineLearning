@@ -44,7 +44,6 @@ def fit_stat_model(df, filter_col, target=lawvar):
     Train the model using the training data
     :return: Linear Regression with least OLS
     '''
-    print("here")
     y = df[target]
     final_cols = list(filter_col)
     for col in filter_col:
@@ -53,7 +52,6 @@ def fit_stat_model(df, filter_col, target=lawvar):
             new_col = "e_" + col
             final_cols.append(new_col)
     final_cols += [col for col in list(df) if col.startswith('dummy_')]
-    print(final_cols)
     X = df[final_cols]
     model = sm.OLS(y, X).fit()
     print(model.summary())

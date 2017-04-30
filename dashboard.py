@@ -3,11 +3,11 @@
 # Main Pipeline Variables
 case_id_column = 'caseid'
 legal_area = "evironment"
-lawvar = "govt_wins"
+lawvar = 'govt_wins'
 case_type = 'govt_environ'
 num_lags = 2
 num_leads = 2
-run_high_dimensional = True
+run_high_dimensional = False
 
 
 # Feature and Grouping Filters

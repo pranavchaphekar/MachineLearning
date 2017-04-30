@@ -172,7 +172,7 @@ def merge_expectations_with_lvl_circuit():
 
 def merge_for_panel():
     df1 = pd.read_csv('concat1.csv')
-    df2 = pd.read_csv('data/filtered.csv')
+    df2 = pd.read_csv('data/result_panel.csv')
 
     df = pd.merge(df2, df1, on=['Circuit', 'year'])
     del df['Unnamed: 0_x']
@@ -311,8 +311,9 @@ def regress(train, test):
     result = pd.DataFrame(list(zip(filter_col, linear_reg.coef_)), columns=['features', 'coefficients'])
     expected_insample = train['govt_wins']
     expected_outsample = test['govt_wins']
-    predicted_insample = linear_reg.predict(train[filter_col])
+    predicted_insample = linear_reg.predict()
     predicted_outsample = linear_reg.predict(test[filter_col])
+    print(predicted_insample)
     print(result)
     print()
     print('Intercept: ' + str(linear_reg.intercept_))
@@ -321,7 +322,7 @@ def regress(train, test):
     print('out sample mse: ' + str(np.mean((predicted_outsample - expected_outsample) ** 2)))
 
 
-def fit_stat_model(train, target):
+def fit_stat_model(train, target = 'govt_wins'):
     '''
     Train the model using the training data
     :return: Linear Regression with least OLS
@@ -330,6 +331,7 @@ def fit_stat_model(train, target):
     target = 'govt_wins'
     model = sm.OLS(train[target], train[filter_col]).fit()
     convert_textfile(model)
+    print(model.predict().shape, train.shape)
     return model
 
 
@@ -573,14 +575,14 @@ def clustering_SE():
 lvl_panel()
 # split_into_train_and_test()
 # lvl_circuityear()
-train, test = split_into_train_and_test('data/result_panel.csv')
-# # regress(train, test)
-
+# train, test = split_into_train_and_test('data/result_panel.csv')
+# regress(train, test)
+# fit_stat_model(train)
 # model_judge_lvl = fit_stat_model(train, 'judge_opinion')
 # model_panel_lvl = fit_stat_model(train, 'govt_wins')
 
 # test_stat_model(model_judge_lvl, train, test, 'judge_opinion')
-lasso_for_feature_selection(train)
+# lasso_for_feature_selection(train)
 # test_stat_model(model_panel_lvl, train, test, 'govt_wins')
 
 # df = pd.read_csv('data/result_panel.csv', low_memory=False)  # load into the data frame

@@ -97,29 +97,29 @@ def _run_regression_():
     df = dp.read_circuityear_level_data()
     train, test = dp.split_into_train_and_test(df)
     # mlt.ols_sklearn(train, test)
-    target = db.lawvar
-    if db.run_high_dimensional:
-        target = [col for col in list(df) if col.startswith('pca_')]
+    #target = db.lawvar
+    #if db.run_high_dimensional:
+    #   target = [col for col in list(df) if col.startswith('pca_')]
     features_selected = db.ols_filter_col
     if run_lasso:
-        features_selected = mlt.feature_selection(df, LassoCV())
+        features_selected = mlt.feature_selection(df, model=LassoCV())
     elif run_random_forest:
-        features_selected = mlt.feature_selection(df, ExtraTreesClassifier())
+        features_selected = mlt.feature_selection(df, model=ExtraTreesClassifier())
     elif run_elastic_net:
-        features_selected = mlt.feature_selection(df, ElasticNetCV())
+        features_selected = mlt.feature_selection(df, model=ElasticNetCV())
     elif run_logistic_regression:
-        features_selected = mlt.feature_selection(df, LogisticRegression())
+        features_selected = mlt.feature_selection(df, model=LogisticRegression())
     i = 1
     models[0] = mlt.fit_stat_model(df, features_selected)
     if Level.panel or Level.circuityear:
         df = dp.read_panel_level_data()
         _clean_data_(df)
-        models[i] = mlt.fit_stat_model(df, features_selected,target=target)
+        models[i] = mlt.fit_stat_model(df, features_selected)
         i += 1
     if Level.circuityear:
         df = dp.read_circuityear_level_data()
         _clean_data_(df)
-        models[i] = mlt.fit_stat_model(df, features_selected,target=target)
+        models[i] = mlt.fit_stat_model(df, features_selected)
     mlt.compare_and_print_statsmodels(models)
     sys.stdout.write("--complete\n")
 

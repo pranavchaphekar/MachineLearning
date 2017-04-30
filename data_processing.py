@@ -217,7 +217,7 @@ def aggregate_on_panel_level():
     grouped = merge_expectations_with_lvl_panel(grouped)
 
     grouped = merge_with_dummies(grouped)
-    
+
     grouped.to_csv(panel_level_file)
 
 
