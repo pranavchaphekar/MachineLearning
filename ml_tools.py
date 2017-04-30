@@ -83,7 +83,7 @@ def test_stat_model(model, insample, outsample):
     print('MSE: (outsample) ' + str(np.mean((ypred - y_actual)) ** 2))
 
 # We can use class sklearn.pipeline.Pipeline(steps)
-def feature_selection(df, target=lawvar, model = LassoCV()):
+def feature_selection(df, target = lawvar, model = LassoCV()):
     characteristics_cols = [col for col in list(df) if col.startswith('x_')]
     # characteristics_cols += [col for col in list(df) if col.startswith('e_x_')]
     # characteristics_cols += [col for col in list(df) if col.startswith('dummy_')]
@@ -132,7 +132,7 @@ def compare_and_print_statsmodels(estimators, indice=0):
                     coeff_with_err.append("("+str(est.bse.values[i])+")")
                     #coeff_with_err.append("(" + str(est.pvalues) + ")")
                     keys.append(est.params.keys()[i])
-                    keys.append(est.params.keys()[i]+" ")
+                    keys.append(" ")
                     #keys.append(est.params.keys()[i]+"_p_value")
                 #coeff["(" + str(k) + ")"] = np.array(coeff_with_err)
                 coeff["(" + str(k) + ")"] = np.array(coeff_with_err)
