@@ -7,7 +7,7 @@ lawvar = 'govt_wins'
 case_type = 'govt_environ'
 num_lags = 2
 num_leads = 2
-run_high_dimensional = False
+run_high_dimensional = True
 
 
 # Feature and Grouping Filters
