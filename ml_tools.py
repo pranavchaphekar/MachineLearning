@@ -133,12 +133,14 @@ def compare_and_print_statsmodels(estimators, indice=0):
                 #    print("obj.%s = %s" % (attr, getattr(est, attr)))
                 #print(type(est.params.values))
                 for i in range(len(est.params.values)):
-                    coeff_with_err.append(est.params.values[i])
-                    coeff_with_err.append("("+str(est.bse.values[i])+")")
-                    #coeff_with_err.append("(" + str(est.pvalues) + ")")
-                    keys.append(est.params.keys()[i])
-                    keys.append(" ")
-                    #keys.append(est.params.keys()[i]+"_p_value")
+                    if not est.params.keys()[i].lower().startswith("dummy") and \
+                            est.params.keys()[i].lower().startswith("e_"):
+                        coeff_with_err.append(est.params.values[i])
+                        coeff_with_err.append("("+str(est.bse.values[i])+")")
+                        #coeff_with_err.append("(" + str(est.pvalues) + ")")
+                        keys.append(est.params.keys()[i])
+                        keys.append(" ")
+                        #keys.append(est.params.keys()[i]+"_p_value")
                 #coeff["(" + str(k) + ")"] = np.array(coeff_with_err)
                 coeff["(" + str(k) + ")"] = np.array(coeff_with_err)
                 keys = np.array(keys)
