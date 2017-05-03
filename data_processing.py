@@ -129,7 +129,7 @@ def merge_char_with_legal_data(df):
 
 
 def merge_expectations_with_lvl_circuit(df2):
-    df1 = pd.read_csv("concat1.csv")
+    df1 = pd.read_csv(generated_circuityear_expectations_file)
     df = pd.merge(df1, df2, on=['Circuit', 'year'], how="inner")
 
     # drops the duplicate _y cols
@@ -145,7 +145,7 @@ def merge_expectations_with_lvl_circuit(df2):
     return df
 
 def merge_expectations_with_lvl_panel(df2):
-    df1 = pd.read_csv('concat1.csv')
+    df1 = pd.read_csv(generated_circuityear_expectations_file)
     df = pd.merge(df2, df1, on=['Circuit', 'year'])
     del df['Unnamed: 0']
     df = df.sort_values(['Circuit', 'year'])

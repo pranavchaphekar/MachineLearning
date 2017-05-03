@@ -39,22 +39,39 @@ def ols_sklearn(train, test):
 
 
 
-def fit_stat_model(df, filter_col, target=lawvar):
+def fit_stat_model(df, filter_col, yvars=['govt_wins']):
     '''
     Train the model using the training data
+    :param df:
+    :param filter_col:
+    :param target:
     :return: Linear Regression with least OLS
     '''
-    y = df[target]
+    yvars = ['govt_wins','pca_0','pca_1','pca_2','pca_3','pca_4','pca_5','pca_6','pca_7','pca_8','pca_9']
     final_cols = list(filter_col)
     for col in filter_col:
-        if col.find("X") == -1:
-            print(col)
-            new_col = "e_" + col
-            final_cols.append(new_col)
+        if col.find("X") is -1:                     #if not an interaction, interaction format a 'X' b
+            expec_col = "e_" + col
+            final_cols.append(expec_col)
+        elif col.find("X") is 1:
+            expec_col1, expec_col2 = (lambda x: 'e_'+col.split('X'))
+            final_cols.append(expec_col1)
+            final_cols.append(expec_col2)
     final_cols += [col for col in list(df) if col.startswith('dummy_')]
     X = df[final_cols]
-    model = sm.OLS(y, X).fit()
-    print(model.summary())
+    #X = (X-X.mean())/X.std()
+    i=0
+    models = {}
+    for yvar in yvars:
+        y = df[yvar]
+        #yvar = (yvar - yvar.mean()) / yvar.std()
+        print(type(yvar))
+        model = sm.OLS(y, X).fit()
+        models[i] = model
+        print("\n\n-------"+str(i)+"-------\n\n\n")
+        #print(model.summary())
+        i+=1
+    compare_and_print_statsmodels(models)
     return model
 
 
@@ -133,12 +150,14 @@ def compare_and_print_statsmodels(estimators, indice=0):
                 #    print("obj.%s = %s" % (attr, getattr(est, attr)))
                 #print(type(est.params.values))
                 for i in range(len(est.params.values)):
-                    coeff_with_err.append(est.params.values[i])
-                    coeff_with_err.append("("+str(est.bse.values[i])+")")
-                    #coeff_with_err.append("(" + str(est.pvalues) + ")")
-                    keys.append(est.params.keys()[i])
-                    keys.append(" ")
-                    #keys.append(est.params.keys()[i]+"_p_value")
+                    if not est.params.keys()[i].lower().startswith("dummy") and \
+                            not est.params.keys()[i].lower().startswith("e_"):
+                        coeff_with_err.append(est.params.values[i])
+                        coeff_with_err.append("("+str(est.bse.values[i])+")")
+                        #coeff_with_err.append("(" + str(est.pvalues) + ")")
+                        keys.append(est.params.keys()[i])
+                        keys.append(" ")
+                        #keys.append(est.params.keys()[i]+"_p_value")
                 #coeff["(" + str(k) + ")"] = np.array(coeff_with_err)
                 coeff["(" + str(k) + ")"] = np.array(coeff_with_err)
                 keys = np.array(keys)

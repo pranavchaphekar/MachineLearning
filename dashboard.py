@@ -7,7 +7,7 @@ lawvar = 'govt_wins'
 case_type = 'govt_environ'
 num_lags = 2
 num_leads = 2
-run_high_dimensional = False
+run_high_dimensional = True
 
 
 # Feature and Grouping Filters
@@ -28,7 +28,7 @@ filtered_char_data_path = 'data/filtered_characteristics.csv'
 handpicked_char_data_path = 'data/handpicked_characteristics.csv'
 char_with_legal_data = 'data/char_with_legal_data.csv'
 lawvar_caseid_decision_file = 'data/govt_winner.pkl'  # Maps Case with boolean(0-1) decision of Lawvar Cases
-generated_circuityear_expectations_file = 'data/final_filtered.csv'
+generated_circuityear_expectations_file = 'data/concat1.csv'
 lags_leads_file = 'data/selected_features_with_lags_leads.csv'
 text_feature_files_dir = 'data/cleaned/textfeatures'
 

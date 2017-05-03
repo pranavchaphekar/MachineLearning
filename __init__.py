@@ -161,7 +161,7 @@ def _generate_plots_():
     sys.stdout.write("\nGenerating Plots".ljust(50))
     df = dp.read_circuityear_level_data()
     df2 = dp.read_expectations_data()
-    dv.all_circuit_comparison(expected=df2, actual=df)
+    dv.all_circuit_comparison(expected=df, actual=df)
     sys.stdout.write("--complete\n")
 
 
@@ -173,7 +173,7 @@ def pipeline():
     # _generate_expectations_at_circuityear_level_()
     _run_regression_()
     _generate_lags_leads_()
-    _run_regression_for_lags_leads_()
+    #_run_regression_for_lags_leads_()
     _generate_plots_()
 
 
