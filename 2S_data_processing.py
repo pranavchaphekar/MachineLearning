@@ -44,18 +44,24 @@ def group_by_circuit(df):
     df = df.groupby(['Circuit', 'pollutant_code'], as_index=False).agg(f)
     return df
 
-def rotate_around_pivot():
-    df = pd.read_csv('pollutants.csv')
-    # tuples = list(zip(df.columns, df.T.values.tolist()))
-    filter_col = [col for col in list(df) if col.startswith('emissions')]
-    df_intermediate = pd.melt(df.reset_index(), id_vars=['Circuit', 'pollutant_code'], value_vars=['emissions90', 'emissions96'])
-    df_final = pd.pivot_table(df_intermediate,index=['Circuit', 'pollutant_code'], columns=[filter_col])
-    df_final.to_csv('intermediate.csv')
-    return df_final
 
-# df = read_pollution_data()
-# df = aggregate_data_by_pollutants(df)
-# df = map_state_to_circuit_no(df)
-# df = group_by_circuit(df)
-df = rotate_around_pivot()
-# df.to_csv('pollutants1.csv')
+def create_output_data_cy_level():
+    df = pd.read_csv('data/pollutants.csv')
+    df_new = pd.wide_to_long(df, ['emissions'], i='Circuit', j='year')
+    wtl = df_new.pivot(columns='pollutant_code')['emissions']
+    wtl.to_csv('data/pollutants_final.csv')
+
+
+def fix_year_values():
+    df = pd.read_csv('data/pollutants_final.csv')
+    df['year'] = pd.Series([(1900+val) if (val >= 90) else (2000+val) for val in df['year']])
+    df.sort_values(['Circuit', 'year'])
+    df.to_csv('data/pollutants_final.csv', index=False)
+
+df = read_pollution_data()
+df = aggregate_data_by_pollutants(df)
+df = map_state_to_circuit_no(df)
+df = group_by_circuit(df)
+df.to_csv('pollutants.csv')
+create_output_data_cy_level()
+fix_year_values()

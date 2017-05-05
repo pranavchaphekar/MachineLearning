@@ -1,5 +1,8 @@
 import pandas as pd
 import numpy as np
+from sklearn.ensemble import RandomForestRegressor
+from sklearn.feature_extraction import DictVectorizer
+from sklearn.linear_model import ElasticNetCV
 from sklearn.linear_model import LinearRegression
 import statsmodels.api as sm
 from sklearn.feature_selection import SelectFromModel
@@ -39,7 +42,7 @@ def ols_sklearn(train, test):
 
 
 
-def fit_stat_model(df, filter_col, yvars=['govt_wins']):
+def fit_stat_model(df, filter_col, yvars=[lawvar],normalize=True,add_controls=True):
     '''
     Train the model using the training data
     :param df:
@@ -47,32 +50,80 @@ def fit_stat_model(df, filter_col, yvars=['govt_wins']):
     :param target:
     :return: Linear Regression with least OLS
     '''
-    yvars = ['govt_wins','pca_0','pca_1','pca_2','pca_3','pca_4','pca_5','pca_6','pca_7','pca_8','pca_9']
     final_cols = list(filter_col)
-    for col in filter_col:
-        if col.find("X") is -1:                     #if not an interaction, interaction format a 'X' b
-            expec_col = "e_" + col
-            final_cols.append(expec_col)
-        elif col.find("X") is 1:
-            expec_col1, expec_col2 = (lambda x: 'e_'+col.split('X'))
-            final_cols.append(expec_col1)
-            final_cols.append(expec_col2)
+    if add_controls:
+        expectations = set()
+        for col in filter_col:
+            if col.find("X") is -1:                     #if not an interaction, interaction format a 'X' b
+                expec_col = "e_" + col
+                expectations.add(expec_col)
+            elif col.find("X") >= 0:
+                expectations.add('e_'+col.split('X')[0].strip())
+                expectations.add('e_'+col.split('X')[1].strip())
+    final_cols.extend(list(expectations))
     final_cols += [col for col in list(df) if col.startswith('dummy_')]
     X = df[final_cols]
-    #X = (X-X.mean())/X.std()
+    if normalize:
+        X = (X-X.mean())/X.std()
     i=0
     models = {}
+    #model = sm.OLS(formula='pca_0 ~ x_republican+dummy_0+dummy_1',data=df).fit()
+    #print(model.summary())
+    #cov_type='cluster',cov_kwds={'groups':(df[['Circuit','year']])}
     for yvar in yvars:
+        print("yvar : "+yvar)
         y = df[yvar]
-        #yvar = (yvar - yvar.mean()) / yvar.std()
+        if normalize:
+            y = (y - y.mean()) / y.std()
         print(type(yvar))
-        model = sm.OLS(y, X).fit()
-        models[i] = model
-        print("\n\n-------"+str(i)+"-------\n\n\n")
-        #print(model.summary())
-        i+=1
-    compare_and_print_statsmodels(models)
+        #X = sm.add_constant(X)
+        #model = LinearRegression()
+        #model.fit(X=X,y=y)
+        #print(model.coef_)
+        #print(model.fit_intercept)
+        model = sm.OLS(y, X)
+        models[i] = model.fit(cov_type='cluster',cov_kwds={'groups':(df[['Circuit','year']])})
+        print(models[i].summary())
+        i += 1
+
+    if len(yvars) > 1:
+        compare_and_print_statsmodels(models)
     return model
+
+
+def featureSelection2(df):
+    df.reset_index(drop=True, inplace=True)
+    X = df['newn_gram']
+    v = DictVectorizer(sparse=False)  # dictionay to dataframe
+    X_test = v.fit_transform(X)
+    X_array = X_test.copy()
+
+    # set the numebr of apperance to 1 for each case in order to count
+    # the number of articles for a token
+    X_array[X_array > 1] = 1
+
+    # if the tokens appear no more than 1 percent of the number of articles in
+    # this legal field, we delete them.
+    a = np.where(X_array.sum(axis=0) > int(0.01 * len(df)))
+    fea_index = a[0]
+    fea_name = np.asarray(v.get_feature_names())[fea_index]
+    fea_matrix = X_test[:, fea_index]
+    newdf = pd.DataFrame(fea_matrix, columns=fea_name)
+    y = df['panelvote']
+    X = newdf
+    names = fea_name.tolist()
+    rf = RandomForestRegressor()
+    rf.fit(X, y)
+    fealst = zip(map(lambda x: round(x, 4), rf.feature_importances_), names)
+
+    # By using RandomForest, we delete the tokens with score 0.
+    impfealst = [fea[1] for fea in fealst if fea[0] > 0]
+    impdf = newdf[impfealst]
+    impdf['panelvote'] = df['panelvote']
+    impdf['issue'] = df['issue']
+    impdf['field'] = df['field']
+    legalfield = impdf['field'].tolist()[0].replace('/', '')
+    impdf.to_csv('./field/' + legalfield + '.csv', index=False)
 
 
 def convert_textfile(model):
@@ -109,11 +160,16 @@ def feature_selection(df, target = lawvar, model = LassoCV()):
     characteristics_cols = [col for col in list(df) if col.startswith('x_')]
     # characteristics_cols += [col for col in list(df) if col.startswith('e_x_')]
     # characteristics_cols += [col for col in list(df) if col.startswith('dummy_')]
+    features_selected_all_regres = set()
     X, y = df[characteristics_cols].fillna(0), df[target]
     # clf = LassoCV()
     # Use ExtraTreesClassifier() for Random Forest
-    sfm = SelectFromModel(model, threshold=0)
+    #model = ElasticNetCV(normalize=True,selection='random',max_iter=10000,tol=0.001)
+    #model = RandomForestRegressor(max_features='sqrt')
+    sfm = SelectFromModel(model, threshold=-10)
     sfm.fit(X, y)
+    #print(model.feature_importances_)
+    #print(model.oob_prediction_)
 
     n_features = sfm.transform(X).shape[1]
 
@@ -121,9 +177,11 @@ def feature_selection(df, target = lawvar, model = LassoCV()):
     # Note that the attribute can be set directly instead of repeatedly
     # fitting the metatransformer.
     while n_features > 5:
-        sfm.threshold += 0.05
+        sfm.threshold += 0.0005
         X_transform = sfm.transform(X)
         n_features = X_transform.shape[1]
+        #print(sfm.n_iter_)
+
 
     features_selected = [x for (x, y) in zip(characteristics_cols, sfm.get_support()) if y == True]
     return features_selected

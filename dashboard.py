@@ -8,6 +8,7 @@ case_type = 'govt_environ'
 num_lags = 2
 num_leads = 2
 run_high_dimensional = True
+use_existing_files = True
 
 
 # Feature and Grouping Filters
@@ -31,14 +32,21 @@ lawvar_caseid_decision_file = 'data/govt_winner.pkl'  # Maps Case with boolean(0
 generated_circuityear_expectations_file = 'data/concat1.csv'
 lags_leads_file = 'data/selected_features_with_lags_leads.csv'
 text_feature_files_dir = 'data/cleaned/textfeatures'
+text_features_lvl_panel = 'data/text_features_lvl_panel.csv'
+text_features_lvl_circuityear = 'data/text_features_lvl_circuityear.csv'
+
+
 
 # Output Files
 judge_level_file = 'data/judge_level_agg.csv'
 panel_level_file = 'data/panel_level_agg.csv'
 circuityear_level_file = 'data/circuityear_level_agg.csv'
+text_features_file = 'data/text_features.csv'
 char_with_text_features = 'data/char_with_text_features.csv'
 
 
 #Graphs
 all_circuit_actual_expected_comparison = {'Democrat' : 'x_dem'}
 
+class Level:
+    judge, panel, circuityear = range(3)
