@@ -7,6 +7,7 @@ import data_processing as dp
 import sys
 import dashboard as db
 from dashboard import Level
+from sklearn import preprocessing
 
 run_level = Level.circuityear
 
@@ -16,7 +17,7 @@ df = pd.read_csv('data/circuityear_level_agg.csv')
 
 pollution = pd.read_csv('data/pollutants_final.csv')
 
-features_selected = db.ols_filter_col
+features_selected = ['x_dem','x_republican','x_instate_ba X x_aba']
 
 expectations = set()
 for col in features_selected:
@@ -48,6 +49,8 @@ def _generate_X_():
 df = df[cols_for_merge]
 pre_X = _generate_X_()
 
+Xvars = [col for col in list(pre_X) if col not in ['Circuit','year','caseid']]
+
 combined_df = pd.merge(df, pre_X, on=['Circuit', 'year'])
 combined_df = pd.merge(combined_df, pollution, on=['Circuit', 'year'])
 combined_df.to_csv('data/combined_2s.csv')
@@ -60,6 +63,11 @@ Z = Z.loc[:, (Z != 0).any(axis=0)]
 X = combined_df[db.lawvar]
 Y = combined_df[y_cols[0]]
 
+vals = Y.values #returns a numpy array
+min_max_scaler = preprocessing.MinMaxScaler()
+y_scaled = min_max_scaler.fit_transform(vals)
+Y = pd.DataFrame(y_scaled)
+
 print(Z.shape, X.shape, Y.shape)
 
 model = gmm.IV2SLS(Y, X, Z)
@@ -67,4 +75,5 @@ model = gmm.IV2SLS(Y, X, Z)
 model.fit()
 results = model._results
 results_ols2nd = model._results_ols2nd
-print(results.summary())
+# print(results.summary())
+print(results_ols2nd.summary())
