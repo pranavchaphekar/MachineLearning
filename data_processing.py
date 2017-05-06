@@ -531,15 +531,15 @@ def merge_text_features(df,level):
 def level_wise_lawvar(level):
     df = read_case_ids()
     if level is Level.circuityear:
-        meanFun = lambda x: np.average(x)
+        sumFun = lambda x: np.sum(x)
         f = dict()
         cols = [col for col in list(df)]
-        f[lawvar] = meanFun
+        f[lawvar] = sumFun
         #for col in cols:
         #    f[col] = meanFun
         data = read_panel_level_data()
-        merged = level_wise_merge(data[['Circuit','year','caseid']],df, Level.panel)
-        df = merged.groupby(['Circuit','year'], as_index=False).agg(f)
+        merged = level_wise_merge(data[['Circuit','year','caseid']],df, Level)
+        df = merged.groupby(['Circuit','year'],as_index=False).agg(f)
     return df
 
 

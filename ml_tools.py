@@ -7,6 +7,7 @@ from sklearn.linear_model import LinearRegression
 import statsmodels.api as sm
 from sklearn.feature_selection import SelectFromModel
 from sklearn.linear_model import LassoCV
+from sklearn.preprocessing import PolynomialFeatures
 from statsmodels.iolib import SimpleTable
 import statsmodels.formula.api as smf
 
@@ -42,7 +43,7 @@ def ols_sklearn(train, test):
 
 
 
-def fit_stat_model(df, filter_col, yvars=[lawvar],normalize=True,add_controls=True):
+def fit_stat_model(df, filter_col, yvars=[lawvar],normalize=False,add_controls=True):
     '''
     Train the model using the training data
     :param df:
@@ -60,11 +61,10 @@ def fit_stat_model(df, filter_col, yvars=[lawvar],normalize=True,add_controls=Tr
             elif col.find("X") >= 0:
                 expectations.add('e_'+col.split('X')[0].strip())
                 expectations.add('e_'+col.split('X')[1].strip())
-    final_cols.extend(list(expectations))
-    final_cols += [col for col in list(df) if col.startswith('dummy_')]
+    #final_cols.extend(list(expectations))
+    #final_cols += [col for col in list(df) if col.startswith('dummy_')]
     X = df[final_cols]
-    if normalize:
-        X = (X-X.mean())/X.std()
+    #X = (X-X.mean())/X.std()
     i=0
     models = {}
     #model = sm.OLS(formula='pca_0 ~ x_republican+dummy_0+dummy_1',data=df).fit()
@@ -73,14 +73,15 @@ def fit_stat_model(df, filter_col, yvars=[lawvar],normalize=True,add_controls=Tr
     for yvar in yvars:
         print("yvar : "+yvar)
         y = df[yvar]
-        if normalize:
-            y = (y - y.mean()) / y.std()
+        #if normalize:
+        #    y = (y - y.mean()) / y.std()
         print(type(yvar))
         #X = sm.add_constant(X)
         #model = LinearRegression()
         #model.fit(X=X,y=y)
         #print(model.coef_)
         #print(model.fit_intercept)
+        #cov_type='cluster',cov_kwds={'groups':(df[['Circuit','year']])}
         model = sm.OLS(y, X)
         models[i] = model.fit(cov_type='cluster',cov_kwds={'groups':(df[['Circuit','year']])})
         print(models[i].summary())
@@ -162,11 +163,12 @@ def feature_selection(df, target = lawvar, model = LassoCV()):
     # characteristics_cols += [col for col in list(df) if col.startswith('dummy_')]
     features_selected_all_regres = set()
     X, y = df[characteristics_cols].fillna(0), df[target]
+    #Start here
     # clf = LassoCV()
     # Use ExtraTreesClassifier() for Random Forest
     #model = ElasticNetCV(normalize=True,selection='random',max_iter=10000,tol=0.001)
     #model = RandomForestRegressor(max_features='sqrt')
-    sfm = SelectFromModel(model, threshold=-10)
+    sfm = SelectFromModel(model, threshold=-3)
     sfm.fit(X, y)
     #print(model.feature_importances_)
     #print(model.oob_prediction_)
@@ -177,13 +179,15 @@ def feature_selection(df, target = lawvar, model = LassoCV()):
     # Note that the attribute can be set directly instead of repeatedly
     # fitting the metatransformer.
     while n_features > 5:
-        sfm.threshold += 0.0005
+        sfm.threshold += 0.0001
         X_transform = sfm.transform(X)
         n_features = X_transform.shape[1]
         #print(sfm.n_iter_)
 
 
     features_selected = [x for (x, y) in zip(characteristics_cols, sfm.get_support()) if y == True]
+    print('selected')
+    print(features_selected)
     return features_selected
 
 

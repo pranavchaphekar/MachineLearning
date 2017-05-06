@@ -7,6 +7,7 @@ from sklearn.linear_model import LassoCV, ElasticNetCV, LogisticRegression
 from sklearn.linear_model import MultiTaskElasticNetCV
 from sklearn.linear_model import MultiTaskLasso
 from sklearn.linear_model import MultiTaskLassoCV
+from sklearn.pipeline import Pipeline
 
 import data_processing as dp
 import ml_tools as mlt
@@ -22,7 +23,7 @@ features_selected = list()
 # Run Parameters
 run_level = Level.circuityear
 run_lasso = False  # chooses handpicked variables if False or lasso chooses the features
-run_random_forest = True
+run_random_forest = False
 run_elastic_net = False
 run_logistic_regression = False
 
@@ -141,6 +142,7 @@ def _run_regression_(X):
     i = 1
     _clean_data_(Z)
     print(Xvars)
+    merged_X_Z.to_csv('data/test.csv')
     models[0] = mlt.fit_stat_model(merged_X_Z,yvars=Xvars, filter_col=features_selected)
 
     i += 1
