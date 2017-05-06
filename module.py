@@ -15,25 +15,28 @@ import statsmodels.formula.api as smf
 
 
 
-def read_and_process_vote_level_data(case_ids):
+def read_and_process_vote_level_data():
 
     '''
     :param case_ids: Takes the case ids which are related to the environments
     :return: A csv file conatining the subset of the original data
     '''
 
-    reader = pd.read_stata('data/BloombergVOTELEVEL_Touse.dta', iterator=True)
+    reader = pd.read_stata('data/prepped-data.dta', iterator=True)
     df = pd.DataFrame()
 
     try:
-        chunk = reader.get_chunk(1000)
+        chunk = reader.get_chunk(10)
         ctr = 1
         while len(chunk) > 0:
-            chunk = chunk[chunk['caseid'].isin(case_ids)]
+            # chunk = chunk[chunk['caseid'].isin(case_ids)]
             df = df.append(chunk, ignore_index=True)
             sys.stdout.write(str(ctr) + ' ')
             sys.stdout.flush()
             ctr += 1
+            if(ctr == 2):
+                df.to_csv('prepped-small.csv')
+                break
             chunk = reader.get_chunk(1000)
     except (StopIteration, KeyboardInterrupt):
         pass
@@ -568,7 +571,7 @@ def clustering_SE():
     #        reverse=True))
 
 # read_environmental_law_indicator()
-# read_and_process_vote_level_data(read_environmental_law_indicator())
+read_and_process_vote_level_data()
 # cleaned_CSV()
 # add_X_col()
 # lvl_judge()
