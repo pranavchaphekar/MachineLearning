@@ -58,6 +58,11 @@ def fix_year_values():
     df.sort_values(['Circuit', 'year'])
     df.to_csv('data/pollutants_final.csv', index=False)
 
+
+def read_final_pollution_data():
+    df = pd.read_csv('data/pollutants_final.csv')
+    return df
+
 df = read_pollution_data()
 df = aggregate_data_by_pollutants(df)
 df = map_state_to_circuit_no(df)
