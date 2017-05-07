@@ -1,31 +1,26 @@
 import sys
-from enum import Enum
 
-from sklearn.ensemble import ExtraTreesClassifier
-from sklearn.ensemble import RandomForestRegressor
-from sklearn.linear_model import LassoCV, ElasticNetCV, LogisticRegression
-from sklearn.linear_model import MultiTaskElasticNetCV
-from sklearn.linear_model import MultiTaskLasso
-from sklearn.linear_model import MultiTaskLassoCV
-from sklearn.pipeline import Pipeline
-
+# Importing inbuilt function
 import data_processing as dp
 import ml_tools as mlt
 import dashboard as db
 import data_visualization as dv
 
-from dashboard import Level
+from dashboard import level, model
 
 # Variable Declaration
-df = None
 features_selected = list()
 
 # Run Parameters
-run_level = Level.circuityear
-run_lasso = False  # chooses handpicked variables if False or lasso chooses the features
-run_random_forest = False
-run_elastic_net = False
-run_logistic_regression = False
+run_level = level.circuityear
+model = model.elastic_net
+use_dummies = True
+use_expectations = True
+generate_plots = False
+
+# Text Features Param
+text_feature_lag = 1
+use_text_features_lag = True
 
 
 def _filter_data_():
@@ -41,45 +36,29 @@ def _handpick_features_from_filtered_data_():
     sys.stdout.write("--complete\n")
 
 
-def _merge_instruments_z_x_():
-    sys.stdout.write("\nMerging Handpicked Features with legal data".ljust(50))
-    df = dp.read_handpicked_features_data_into_dataframe()
-    dp.merge_char_with_legal_data(df)
-    sys.stdout.write("--complete\n")
-
-
 def _generate_level_files_():
-    df = dp.read_char_with_legal_data()
-    sys.stdout.write("\nAggregating Data".ljust(50))
-    sys.stdout.write("\nJudge Level".ljust(50))
-    df = dp.aggregate_on_judge_level(df)
-    sys.stdout.write("--complete" + ' ')
-    sys.stdout.write("\nPanel Level".ljust(50))
-    dp.aggregate_on_panel_level()
-    sys.stdout.write("--complete" + ' ')
-    if run_level == Level.circuityear:
-        sys.stdout.write("\nCircuit Year Level".ljust(50))
-        dp.aggregate_on_circuityear_level()
-        sys.stdout.write("--complete\n")
-
+    if not db.use_existing_files:
+        df = dp.read_char_with_legal_data()
+        sys.stdout.write("\nAggregating Data".ljust(50))
+        sys.stdout.write("\nJudge Level".ljust(50))
+        df = dp.aggregate_on_judge_level(df)
+        sys.stdout.write("--complete" + ' ')
+        sys.stdout.write("\nPanel Level".ljust(50))
+        dp.aggregate_on_panel_level()
+        sys.stdout.write("--complete" + ' ')
+        if run_level == level.circuityear:
+            sys.stdout.write("\nCircuit Year Level".ljust(50))
+            dp.aggregate_on_circuityear_level()
+            sys.stdout.write("--complete\n")
 
 
 def _generate_expectations_at_circuityear_level_():
-    sys.stdout.write("\nGenerating Expectations".ljust(50))
     if not db.use_existing_files:
+        sys.stdout.write("\nGenerating Expectations".ljust(50))
         dp.generate_expectations()
-    sys.stdout.write("--complete\n")
-
-
-
-def _read_data_():
-    global df
-    sys.stdout.write("\nReading & Loading Data".ljust(50))
-    dp.read_and_process_vote_level_data()
-    # dp.read_vote_level_data_into_dataframe()
-    # df = dp.read_filtered_data_into_dataframe()
-    df = dp.read_judge_level_data()
-    sys.stdout.write("--complete\n")
+    else:
+        sys.stdout.write("\nUsing existing file of Expectations".ljust(50))
+        sys.stdout.write("--done\n")
 
 
 def _clean_data_(df):
@@ -89,63 +68,66 @@ def _clean_data_(df):
     sys.stdout.write("--complete\n")
     return df
 
-def  _generate_X_():
-    sys.stdout.write("\nGenerating X".ljust(50))
-    X = dp.level_wise_lawvar(run_level)
-    sys.stdout.write("--loaded lawvar\n")
-    if db.run_high_dimensional:
-        sys.stdout.write("\nGenerating Text Features".ljust(50))
-        df = dp.generate_text_features_for_lawvar_cases()
-        df = dp.generate_pca_of_text_features(run_level)
-        X = dp.level_wise_merge(X,df,run_level)
+
+def _generate_X_():
+    X = None
+    if not db.use_existing_files:
+        sys.stdout.write("\nGenerating X".ljust(50))
+        dp.generate_X(run_level=run_level, use_text_features_lag=use_text_features_lag)
+        X = dp.read_X(text_feature_lag)
         sys.stdout.write("--complete\n")
-    sys.stdout.write("\nGenerating X".ljust(50))
-    sys.stdout.write("--complete\n")
+    else:
+        sys.stdout.write("\nReading X from file".ljust(50))
+        X = dp.read_X(text_feature_lag)
+        sys.stdout.write("--loaded\n")
     return X
+
 
 def _run_regression_(X):
     global features_selected
 
-    models = {}
-
+    Z = None
     sys.stdout.write("\nStarting Regression".ljust(50))
 
-    Z = dp.read_panel_level_data()
-
-    if run_level == Level.circuityear:
+    if run_level == level.circuityear:
         Z = dp.read_circuityear_level_data()
+    else:
+        Z = dp.read_panel_level_data()
 
-    #Xvars = [db.lawvar]
-    Xvars = [col for col in list(X) if col not in ['Circuit','year','caseid']]
+    # Getting Column names for which 1st stage regression would run
+    not_included = dp.get_cols_not_included_in_1LS(X=X)
+    Xvars = [col for col in list(X) if col not in not_included]
 
-    train, test = dp.split_into_train_and_test(X)
+    # Merging X and Z
+    merged_X_Z = dp.level_wise_merge(X, Z, run_level)
 
-    merged_X_Z = dp.level_wise_merge(X,Z,run_level)
-    #merged_X_Z = merged_X_Z.rename(columns={'govt_wins_x': 'govt_wins'})
-    features_selected = db.ols_filter_col
-    merged_X_Z = merged_X_Z[merged_X_Z.columns[~merged_X_Z.columns.str.contains('Unnamed:')]]
+    # Inititalising with handpicked features in feature selection
     _clean_data_(merged_X_Z)
-    if run_lasso:
-        if db.run_high_dimensional:
-            features_selected = mlt.feature_selection(merged_X_Z, model=MultiTaskLasso(normalize=True,selection='random',max_iter=10000),target=Xvars)
-        else:
-            features_selected = mlt.feature_selection(merged_X_Z, model=LassoCV(normalize=True),target=Xvars)
-    elif run_random_forest:
-        features_selected = mlt.feature_selection(merged_X_Z, model=RandomForestRegressor(max_features='sqrt'),target=Xvars)
-    elif run_elastic_net:
-        if db.run_high_dimensional:
-            features_selected = mlt.feature_selection(merged_X_Z, model=MultiTaskElasticNetCV(),target=Xvars)
-        else:
-            features_selected = mlt.feature_selection(merged_X_Z, model=ElasticNetCV(),target=Xvars)
-    elif run_logistic_regression:
-        features_selected = mlt.feature_selection(merged_X_Z, model=LogisticRegression(),target=Xvars)
-    i = 1
-    _clean_data_(Z)
-    print(Xvars)
-    merged_X_Z.to_csv('data/test.csv')
-    models[0] = mlt.fit_stat_model(merged_X_Z,yvars=Xvars, filter_col=features_selected)
+    # Grid_search_CV(merged_X_Z)
+    features_selected = db.ols_filter_col
 
-    i += 1
+    # Running feature selection
+    if model is not db.model.handpicked:
+        features_selected = mlt.run_feature_selection_for_model(merged_df=merged_X_Z,
+                                                                Yvars=Xvars,
+                                                                run_model=model,
+                                                                )
+    # Saving the final merged dataframe
+    merged_X_Z.to_csv(db.final_merged_file)
+
+    # Running Regression
+    if use_text_features_lag:
+        mlt.fit_stat_model(merged_X_Z,
+                           yvars=Xvars,
+                           filter_col=features_selected,
+                           includetext_feature_lags=True,
+                           text_feature_lag=text_feature_lag)
+    else:
+        mlt.fit_stat_model(merged_X_Z,
+                           yvars=Xvars,
+                           filter_col=features_selected,
+                           includetext_feature_lags=False)
+
     sys.stdout.write("--complete\n")
 
 
@@ -170,7 +152,10 @@ def _run_regression_for_lags_leads_():
         for feature in features_selected:
             lead_features.append(feature + '_f' + str(itr + 1))
         df_clean = df.dropna(subset=lead_features)
-        models[i] = mlt.fit_stat_model(df_clean, lead_features)
+        models[i] = mlt.fit_stat_model(df_clean,
+                                       lead_features,
+                                       use_expectations=use_expectations,
+                                       use_dummies=use_dummies)
         i += 1
         lead_features = list()
 
@@ -183,23 +168,26 @@ def _generate_lags_leads_():
 
 
 def _generate_plots_():
-    sys.stdout.write("\nGenerating Plots".ljust(50))
-    df = dp.read_circuityear_level_data()
-    df2 = dp.read_expectations_data()
-    dv.all_circuit_comparison(expected=df, actual=df)
-    sys.stdout.write("--complete\n")
+    if generate_plots:
+        sys.stdout.write("\nGenerating Plots".ljust(50))
+        df = dp.read_circuityear_level_data()
+        df2 = dp.read_expectations_data()
+        dv.all_circuit_comparison(expected=df, actual=df)
+        sys.stdout.write("--complete\n")
+    else:
+        sys.stdout.write("\nGenerate Plot value set to".ljust(50))
+        sys.stdout.write("--false\n")
 
 
 def pipeline():
     _filter_data_()
     _handpick_features_from_filtered_data_()
-    #_merge_instruments_z_x_()
-    #_generate_level_files_()
+    _generate_level_files_()
     _generate_expectations_at_circuityear_level_()
     X = _generate_X_()
     _run_regression_(X)
-    #_generate_lags_leads_()
-    #_run_regression_for_lags_leads_()
+    # _generate_lags_leads_()
+    # _run_regression_for_lags_leads_()
     _generate_plots_()
 
 
