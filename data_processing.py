@@ -7,11 +7,8 @@ from zipfile import ZipFile
 import pandas as pd
 import sys
 import numpy as np
-from dashboard import *
-from sklearn.ensemble import ExtraTreesClassifier
-from ml_tools import pca_on_text_features,pls_regression_on_text_features
-import statsmodels.formula.api as smf
-from dashboard import Level
+import dashboard as db
+from ml_tools import pca_on_text_features, pls_regression_on_text_features
 
 
 ######################
@@ -24,7 +21,7 @@ def read_and_process_vote_level_data():
     :return: A csv file containing the subset of the original data
     """
     case_ids = read_case_ids()
-    reader = pd.read_stata(characteristic_data_path, iterator=True)
+    reader = pd.read_stata(db.characteristic_data_path, iterator=True)
     df = pd.DataFrame()
 
     try:
@@ -32,7 +29,7 @@ def read_and_process_vote_level_data():
         ctr = 1
         sys.stdout.write("Loading Chunk : " + ' ')
         while len(chunk) > 0:
-            chunk = chunk[chunk[case_id_column].isin(case_ids)]
+            chunk = chunk[chunk[db.case_id_column].isin(case_ids)]
             df = df.append(chunk, ignore_index=True)
             sys.stdout.write(str(ctr) + ' ')
             sys.stdout.flush()
@@ -40,21 +37,21 @@ def read_and_process_vote_level_data():
             chunk = reader.get_chunk(1000)
     except (StopIteration, KeyboardInterrupt):
         pass
-    df.to_csv(filtered_char_data_path)
+    df.to_csv(db.filtered_char_data_path)
 
 
 def read_filtered_data_into_dataframe():
-    df = pd.read_csv(filtered_char_data_path, low_memory=False)  # load into the data frame
+    df = pd.read_csv(db.filtered_char_data_path, low_memory=False)  # load into the data frame
     return df
 
 
 def read_handpicked_features_data_into_dataframe():
-    df = pd.read_csv(handpicked_char_data_path, low_memory=False)  # load into the data frame
+    df = pd.read_csv(db.handpicked_char_data_path, low_memory=False)  # load into the data frame
     return df
 
 
 def read_char_with_legal_data():
-    df = pd.read_csv(char_with_legal_data, low_memory=False)  # load into the data frame
+    df = pd.read_csv(db.char_with_legal_data, low_memory=False)  # load into the data frame
     return df
 
 
@@ -64,9 +61,9 @@ def read_case_ids():
     and returns the list
     :return:
     """
-    df = pickle.load(open(lawvar_caseid_decision_file, 'rb'))
-    cases = df[df[case_type] == 1]
-    cases = cases[['caseid', lawvar]]
+    df = pickle.load(open(db.lawvar_caseid_decision_file, 'rb'))
+    cases = df[df[db.case_type] == 1]
+    cases = cases[['caseid', db.lawvar]]
     cases = cases.drop_duplicates()
     return cases
 
@@ -79,7 +76,7 @@ def clean_nan_values(df):
 
 
 def clean_na_values(df):
-    #return df.fillna(0)
+    # return df.fillna(0)
     return df.dropna()
 
 
@@ -88,8 +85,8 @@ def handpick_features_from_char_data(df):
 
     :return:
     """
-    df[features_to_use].to_csv(handpicked_char_data_path)
-    return df[features_to_use]
+    df[db.features_to_use].to_csv(db.handpicked_char_data_path)
+    return df[db.features_to_use]
 
 
 ######################
@@ -103,7 +100,7 @@ def merge_with_legal_area_data(df, legal_area_data):
     """
     # df = pd.read_csv('filtered_subset.csv')
     df = pd.merge(df, legal_area_data, on='caseid', index=False)
-    df.to_csv(char_with_legal_data)
+    df.to_csv(db.char_with_legal_data)
     return df
 
 
@@ -126,12 +123,12 @@ def merge_char_with_legal_data(df):
     df = pd.merge(df, read_case_ids(), on='caseid')
     del df['Unnamed: 0']
     df = df.drop_duplicates()
-    df.to_csv(char_with_legal_data)
+    df.to_csv(db.char_with_legal_data)
     return df
 
 
 def merge_expectations_with_lvl_circuit(df2):
-    df1 = pd.read_csv(generated_circuityear_expectations_file)
+    df1 = pd.read_csv(db.generated_circuityear_expectations_file)
     df = pd.merge(df1, df2, on=['Circuit', 'year'], how="inner")
 
     # drops the duplicate _y cols
@@ -146,19 +143,22 @@ def merge_expectations_with_lvl_circuit(df2):
     df = df.sort_values(['Circuit', 'year'])
     return df
 
+
 def merge_expectations_with_lvl_panel(df2):
-    df1 = pd.read_csv(generated_circuityear_expectations_file)
+    df1 = pd.read_csv(db.generated_circuityear_expectations_file)
     df = pd.merge(df2, df1, on=['Circuit', 'year'])
     del df['Unnamed: 0']
     df = df.sort_values(['Circuit', 'year'])
     return df
 
+
 def merge_with_dummies(df):
-    df_dummies = pd.get_dummies(df['Circuit'],prefix="dummy")
+    df_dummies = pd.get_dummies(df['Circuit'], prefix="dummy")
     df = pd.concat([df, df_dummies], axis=1)
-    df_dummies = pd.get_dummies(df['year'],prefix="dummy")
-    df = pd.concat([df,df_dummies],axis=1)
+    df_dummies = pd.get_dummies(df['year'], prefix="dummy")
+    df = pd.concat([df, df_dummies], axis=1)
     return df
+
 
 ######################
 # Data Agregation Methods
@@ -196,12 +196,12 @@ def aggregate_on_judge_level(df):
     sort_order = ['Circuit', 'year', 'month']
     # Sorting by the column enteries and store that in result dataframe
     result = result.sort_values(by=sort_order)
-    result.to_csv(judge_level_file)
+    result.to_csv(db.judge_level_file)
     return result
 
 
 def aggregate_on_panel_level():
-    df = pd.read_csv(judge_level_file, low_memory=False)  # load into the data frame
+    df = pd.read_csv(db.judge_level_file, low_memory=False)  # load into the data frame
     filter_col = [col for col in list(df) if col.startswith('x_')]
     df.insert(5, 'num_judges', 1)
     countFun = lambda x: len(x)
@@ -210,21 +210,21 @@ def aggregate_on_panel_level():
     f['num_judges'] = countFun
     for col in filter_col:
         f[col] = meanFun
-    if run_high_dimensional:
+    if db.run_high_dimensional:
         high_dem_col = [col for col in list(df) if col.startswith('pca_')]
         for col in high_dem_col:
             f[col] = meanFun
-    grouped = df.groupby(panel_level_grouping_columns, as_index=False).agg(f)
+    grouped = df.groupby(db.panel_level_grouping_columns, as_index=False).agg(f)
 
     grouped = merge_expectations_with_lvl_panel(grouped)
 
     grouped = merge_with_dummies(grouped)
 
-    grouped.to_csv(panel_level_file)
+    grouped.to_csv(db.panel_level_file)
 
 
 def aggregate_on_circuityear_level():
-    df = pd.read_csv(panel_level_file, low_memory=False)
+    df = pd.read_csv(db.panel_level_file, low_memory=False)
 
     X_star = []
     E_star = []
@@ -242,9 +242,9 @@ def aggregate_on_circuityear_level():
     # Generating and renaming variables so that they have appropriate names after collapsing gen
     # df.rename(columns={lawvar:'numCasesPro','caseid' :'numCases'}, inplace=True)
 
-    df['numCasesPro'] = df[lawvar]
+    df['numCasesPro'] = df[db.lawvar]
     df['numCases'] = 1
-    df['numCasesAnti'] = 1 - df[lawvar]
+    df['numCasesAnti'] = 1 - df[db.lawvar]
 
     sort_order = ['Circuit', 'year']
     # Sorting by the column enteries and store that in result dataframe
@@ -261,7 +261,7 @@ def aggregate_on_circuityear_level():
     f['numCases'] = sumFun
     f['numCasesAnti'] = sumFun
     f['numCasesPro'] = sumFun
-    f[lawvar] = meanFun
+    f[db.lawvar] = meanFun
     for col in X_star:
         f[col] = meanFun
 
@@ -279,37 +279,37 @@ def aggregate_on_circuityear_level():
     # Merge with Dummies
     df = merge_with_dummies(df)
 
-    df.to_csv(circuityear_level_file)
+    df.to_csv(db.circuityear_level_file)
 
 
 def read_judge_level_data():
-    df = pd.read_csv(judge_level_file, low_memory=False)  # load into the data frame
+    df = pd.read_csv(db.judge_level_file, low_memory=False)  # load into the data frame
     return df
 
 
 def read_panel_level_data():
-    df = pd.read_csv(panel_level_file, low_memory=False)  # load into the data frame
+    df = pd.read_csv(db.panel_level_file, low_memory=False)  # load into the data frame
     return df
 
 
 def read_circuityear_level_data():
-    df = pd.read_csv(circuityear_level_file, low_memory=False)  # load into the data frame
+    df = pd.read_csv(db.circuityear_level_file, low_memory=False)  # load into the data frame
     return df
 
 
 def read_expectations_data():
-    df = pd.read_csv(generated_circuityear_expectations_file, low_memory=False)  # load into the data frame
+    df = pd.read_csv(db.generated_circuityear_expectations_file, low_memory=False)  # load into the data frame
     return df
 
 
 def read_lags_leads_data():
-    df = pd.read_csv(lags_leads_file, low_memory=False)
+    df = pd.read_csv(db.lags_leads_file, low_memory=False)
     return df
 
 
 # This function splits the file into test and train data
 def split_into_train_and_test(df):
-    msk = np.random.rand(len(df)) < train_test_split
+    msk = np.random.rand(len(df)) < db.train_test_split
     train = df[msk]
     test = df[~msk]
     return train, test
@@ -320,7 +320,7 @@ def split_into_train_and_test(df):
 #######################
 def generate_expectations():
     # Read the environmental data and keep only 2 columns which will be useful further.
-    df_environmental = pd.read_csv(characteristic_data_path)
+    df_environmental = pd.read_csv(db.characteristic_data_path)
     columns_to_be_kept = ['Circuit', 'year']
     df_environmental = df_environmental[columns_to_be_kept]
     df_environmental = df_environmental.dropna(subset=['year'])
@@ -380,7 +380,7 @@ def add_col_and_grp(df):
 
 
 def combine_with_env(df):
-    df_environmental = pd.read_csv(filtered_char_data_path)
+    df_environmental = pd.read_csv(db.filtered_char_data_path)
     keys = ['Circuit', 'year']
     df = pd.merge(df, df_environmental, on=keys, how='inner')
     return df
@@ -414,7 +414,7 @@ def generate_lags_and_leads(features, n_lags=1, n_leads=1):
     df = read_circuityear_level_data()
     keys = ['Circuit', 'year']
     df.sort_values(keys)
-    keys.append(lawvar)
+    keys.append(db.lawvar)
     keys.extend(features)
     df = df[keys]
     for i in range(n_lags):
@@ -427,10 +427,10 @@ def generate_lags_and_leads(features, n_lags=1, n_leads=1):
             f_lag = f + '_f' + str(i + 1)
             df[f_lag] = df.groupby('Circuit')[f].shift(-(i + 1))
 
-    df.to_csv(lags_leads_file)
+    df.to_csv(db.lags_leads_file)
 
 
-#generate_lags_and_leads(ols_filter_col)
+# generate_lags_and_leads(ols_filter_col)
 
 #######################
 # Text Features
@@ -442,20 +442,20 @@ def generate_text_features_for_lawvar_cases():
     containing case number wise pickle files.
     :return: data frame containing
     '''
-    if not use_existing_files:
-        zipfiles = glob('./'+text_feature_files_dir+'/*zip')
+    if not db.use_existing_files:
+        zipfiles = glob('./' + db.text_feature_files_dir + '/*zip')
         lawvar_case_ids = read_case_ids()
         lawvar_case_ids = lawvar_case_ids.caseid.unique()
         text_df = pd.DataFrame(index=lawvar_case_ids)
-        #text_df['caseid'] = lawvar_case_ids['caseid']
+        # text_df['caseid'] = lawvar_case_ids['caseid']
         lawvar_case_ids = set(lawvar_case_ids)
         print(lawvar_case_ids)
         for zfname in zipfiles:
             zfile = ZipFile(zfname)
             year = zfname.split('/')[-1][:-4]
             members = zfile.namelist()
-            #threshold = len(members) / 200
-            #docfreqs = Counter()
+            # threshold = len(members) / 200
+            # docfreqs = Counter()
 
             for fname in members:
                 if not fname.endswith('-maj.p'):
@@ -463,55 +463,100 @@ def generate_text_features_for_lawvar_cases():
                 docid = fname.split('/')[-1][:-6]
                 if docid in lawvar_case_ids:
                     text = pickle.load(zfile.open(fname))
-                    for citation,num_citation in text.items():
+                    for citation, num_citation in text.items():
                         if citation not in text_df:
                             text_df[citation] = 0
                         row = text_df[text_df.index == docid].index
                         text_df.set_value(row, citation, num_citation)
-        text_df.to_csv(text_features_file)
+        text_df.to_csv(db.text_features_file)
     else:
-        text_df = pd.read_csv(text_features_file, low_memory=False, index_col=0)
+        text_df = pd.read_csv(db.text_features_file, low_memory=False, index_col=0)
     return text_df
 
-def generate_pca_of_text_features(level):
+
+def agg_text_features_on_circuityear_level(df):
+    df['caseid'] = read_case_ids().caseid.unique()
+    cols = [col for col in list(df.columns) if col not in ['Circuit', 'year', 'caseid']]
+    sumFun = lambda x: x.sum()
+    f = {}
+    for col in cols:
+        f[col] = sumFun
     panel_data = read_panel_level_data()
-    text_features = pd.read_csv(text_features_file, low_memory=False, index_col=0)
-    pca_comp = pca_on_text_features(text_features)
+    df = pd.merge(df, panel_data[['Circuit', 'year', 'caseid']], on='caseid')
+    df.to_csv('data/abc2.csv')
+    df = df.groupby(["Circuit", "year"], as_index=False).agg(f)
+    df.to_csv('data/abc.csv')
+    return df
+
+
+def generate_pca_of_text_features(level, text_features):
+    panel_data = read_panel_level_data()
+    # text_features = pd.read_csv(text_features_file, low_memory=False, index_col=0)
+    df_comb = None
+    if level is level.circuityear:
+        df_comb = text_features[['Circuit', 'year']]
+    else:
+        df_comb = text_features['caseid']
+
+    pca_comp = pca_on_text_features(
+        text_features[[col for col in list(text_features.columns) if col not in ['Circuit', 'year', 'caseid']]])
     pca_comp = pca_comp.transpose()
     col_names = []
     for i in range(pca_comp.shape[1]):
         col_names.append('pca_' + str(i))
+
     pca_comp = pd.DataFrame(pca_comp)
     pca_comp.columns = col_names
-    pca_comp['caseid'] = read_case_ids().caseid.unique()
-    merged_panel = pd.merge(pca_comp, panel_data[['Circuit', 'year','caseid']], on='caseid')
-    merged_panel.to_csv(text_features_lvl_panel)
-
-    # Define a lambda function to compute the weighted mean:
-    meanFun = lambda x: np.average(x)
-
-    f = {}
-    for col in pca_comp.columns:
-        if col is not 'caseid':
-            f[col] = meanFun
-
-    merged_circuityear = merged_panel.groupby(["Circuit", "year"], as_index=False).agg(f)
-    merged_circuityear.to_csv(text_features_lvl_circuityear)
-
-    if level is Level.panel:
-        return merged_panel
-    elif level is Level.circuityear:
-        return merged_circuityear
-
-def level_wise_merge(df1,df2,level):
-    merged = None
-    if level is Level.circuityear:
-        merged = pd.merge(df1, df2, on=['Circuit', 'year'],how='inner')
+    if level is level.circuityear:
+        pca_comp['Circuit'] = df_comb['Circuit']
+        pca_comp['year'] = df_comb['year']
+        pca_comp.to_csv(db.text_features_lvl_circuityear)
     else:
-        merged = pd.merge(df1, df2, on='caseid',how='inner')
+        pca_comp['caseid'] = df_comb['caseid']
+        pca_comp.to_csv(db.text_features_lvl_panel)
+
+    return pca_comp
+
+
+def generate_lags_and_leads_text_features(df, n_lags=1):
+    features = [col for col in list(df.columns) if col not in ['Circuit', 'year', 'caseid', db.lawvar]]
+    keys = ['Circuit', 'year']
+    df.sort_values(keys)
+    keys.append(db.lawvar)
+    keys.extend(features)
+    df = df[keys]
+
+    for i in range(n_lags):
+        for f in features:
+            f_lag = f + '_t' + str(i + 1)
+            df[f_lag] = df.groupby('Circuit')[f].shift(i + 1)
+
+    df.to_csv(db.X_with_lags_leads_file)
+    return df
+
+
+def read_X(text_feature_lag):
+    df = pd.read_csv(db.X_with_lags_leads_file, low_memory=False)
+    df = df[df.columns[~df.columns.str.contains('Unnamed:')]]
+    x_features_to_include = []
+    x_features_to_include.extend([col for col in list(df.columns) if '_t' not in col])
+    x_features_to_include.extend([col for col in list(df.columns) if col.startswith('pca_') and col.endswith('_t'+str(text_feature_lag))])
+    df =df[x_features_to_include]
+    df =df.dropna(how='any')
+    return df
+
+
+def level_wise_merge(df1, df2, level):
+    merged = None
+    if level is db.level.circuityear:
+        merged = pd.merge(df1, df2, on=['Circuit', 'year'], how='inner')
+    else:
+        merged = pd.merge(df1, df2, on='caseid', how='inner')
+    merged = merged[merged.columns[~merged.columns.str.contains('Unnamed:')]]
     return merged
 
-def merge_text_features(df,level):
+
+def merge_text_features(df, level):
     '''
     Merges text features with a data frame on the basis
     of a case id.
@@ -519,30 +564,60 @@ def merge_text_features(df,level):
     '''
     merged = None
 
-    text_features = pd.read_csv(text_features_lvl_panel, low_memory=False, index_col=0)
+    text_features = pd.read_csv(db.text_features_lvl_panel, low_memory=False, index_col=0)
 
-    if level is Level.circuityear:
-        text_features = pd.read_csv(text_features_lvl_circuityear, low_memory=False, index_col=0)
+    if level is level.circuityear:
+        text_features = pd.read_csv(db.text_features_lvl_circuityear, low_memory=False, index_col=0)
 
-    merged = level_wise_merge(text_features,df,level)
+    merged = level_wise_merge(text_features, df, level)
 
     return merged
 
+
 def level_wise_lawvar(level):
     df = read_case_ids()
-    if level is Level.circuityear:
+    if level is level.circuityear:
         sumFun = lambda x: np.sum(x)
         f = dict()
         cols = [col for col in list(df)]
-        f[lawvar] = sumFun
-        #for col in cols:
+        f[db.lawvar] = sumFun
+        # for col in cols:
         #    f[col] = meanFun
         data = read_panel_level_data()
-        merged = level_wise_merge(data[['Circuit','year','caseid']],df, Level)
-        df = merged.groupby(['Circuit','year'],as_index=False).agg(f)
+        merged = level_wise_merge(data[['Circuit', 'year', 'caseid']], df, level)
+        df = merged.groupby(['Circuit', 'year'], as_index=False).agg(f)
     return df
 
 
+def get_lags_features(df, lag_year=1):
+    i = 0
+    lag_features = list()
+    for feature in [col for col in list(df.columns) if '_t' + str(lag_year) in col]:
+        # lag_features.append(feature + '_t' + str(lag_year + 1))
+        # df_clean = df.dropna(subset=lag_features)
+        lag_features.append(feature)
+        i += 1
+    return lag_features
 
 
-#text_features_for_lawvar_cases()
+def generate_X(run_level, use_text_features_lag):
+    X = level_wise_lawvar(run_level)
+    if db.run_high_dimensional:
+        df = generate_text_features_for_lawvar_cases()
+        df = agg_text_features_on_circuityear_level(df)
+        df = generate_pca_of_text_features(run_level, text_features=df)
+        X = level_wise_merge(X, df, run_level)
+        if use_text_features_lag:
+            X = generate_lags_and_leads_text_features(X, n_lags=db.num_lags)
+    X.to_csv(db.X_file)
+    X = X.dropna(how='any')
+    return X
+
+
+def get_cols_not_included_in_1LS(X):
+    not_included = ['Circuit', 'year', 'caseid']
+    for lag_yr in range(1, db.num_lags + 1):
+        not_included.extend(get_lags_features(X, lag_yr))
+    return not_included
+
+    # text_features_for_lawvar_cases()
