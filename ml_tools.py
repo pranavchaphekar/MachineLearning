@@ -217,10 +217,11 @@ def pca_on_text_features(df):
     :return: top n components as mentioned in the dashboard
               file
     '''
+    print('running pca')
     pca = PCA(n_components=pca_components)
-    df = df.transpose()
-    pca.fit_transform(df)
-    return pca.components_
+    #df = df.transpose()
+    a = pca.fit_transform(df)
+    return a
 
 
 def pls_regression_on_text_features(df):

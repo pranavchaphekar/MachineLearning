@@ -500,7 +500,7 @@ def generate_pca_of_text_features(level, text_features):
 
     pca_comp = pca_on_text_features(
         text_features[[col for col in list(text_features.columns) if col not in ['Circuit', 'year', 'caseid']]])
-    pca_comp = pca_comp.transpose()
+    #pca_comp = pca_comp.transpose()
     col_names = []
     for i in range(pca_comp.shape[1]):
         col_names.append('pca_' + str(i))
