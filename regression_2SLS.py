@@ -8,7 +8,7 @@ import data_processing_2S as dp2
 run_level = db.level.circuityear
 
 text_feature_lag = 1
-env_leads = 1
+env_leads = 0
 
 y_cols = ['CO', 'NH3', 'NOX', 'PM10', 'PM25', 'SO2', 'VOC']
 features_selected = ['x_dem', 'x_republican', 'x_instate_ba X x_aba']
