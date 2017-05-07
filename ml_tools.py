@@ -1,16 +1,21 @@
+import multiprocessing
+from time import time
+
 import pandas as pd
 import numpy as np
 from sklearn.ensemble import RandomForestRegressor
-from sklearn.feature_extraction import DictVectorizer
 from sklearn.linear_model import ElasticNetCV
 from sklearn.linear_model import LinearRegression
 import statsmodels.api as sm
 from sklearn.feature_selection import SelectFromModel
 from sklearn.linear_model import LassoCV
-from sklearn.preprocessing import PolynomialFeatures
+from sklearn.linear_model import LogisticRegression
+from sklearn.linear_model import MultiTaskElasticNetCV
+from sklearn.linear_model import MultiTaskLasso
+from sklearn.model_selection import GridSearchCV
+from sklearn.pipeline import Pipeline
 from statsmodels.iolib import SimpleTable
-import statsmodels.formula.api as smf
-
+import data_processing as dp
 
 from sklearn.decomposition import PCA
 from sklearn.cross_decomposition import PLSRegression
@@ -42,8 +47,8 @@ def ols_sklearn(train, test):
     print('out sample mse: ' + str(np.mean(predicted_outsample - expected_outsample) ** 2))
 
 
-
-def fit_stat_model(df, filter_col, yvars=[lawvar],normalize=False,add_controls=True):
+def fit_stat_model(df, filter_col, yvars=[lawvar], normalize=False, add_controls=True, includetext_feature_lags=False,
+                   text_feature_lag=1,use_expectations=True,use_dummies=True):
     '''
     Train the model using the training data
     :param df:
@@ -52,79 +57,47 @@ def fit_stat_model(df, filter_col, yvars=[lawvar],normalize=False,add_controls=T
     :return: Linear Regression with least OLS
     '''
     final_cols = list(filter_col)
+    include_list = list(filter_col)
+    # Adding the expectations for the selected features
     if add_controls:
         expectations = set()
         for col in filter_col:
-            if col.find("X") is -1:                     #if not an interaction, interaction format a 'X' b
+            if col.find("X") <= 0 and not col.startswith('pca_'):  # if not an interaction, interaction format a 'X' b
                 expec_col = "e_" + col
                 expectations.add(expec_col)
             elif col.find("X") >= 0:
-                expectations.add('e_'+col.split('X')[0].strip())
-                expectations.add('e_'+col.split('X')[1].strip())
-    #final_cols.extend(list(expectations))
-    #final_cols += [col for col in list(df) if col.startswith('dummy_')]
+                expectations.add('e_' + col.split('X')[0].strip())
+                expectations.add('e_' + col.split('X')[1].strip())
+
+    # Include in X the text feature lags if 'use_text_features_lag' is True
+    if includetext_feature_lags:
+        l = [col for col in list(df) if col.startswith('pca_') and '_t' + str(text_feature_lag) in col]
+        final_cols += l
+        include_list += l
+    if use_expectations:
+        final_cols.extend(list(expectations))
+    if use_dummies:
+        final_cols += [col for col in list(df) if col.startswith('dummy_')]
     X = df[final_cols]
-    #X = (X-X.mean())/X.std()
-    i=0
+    i = 0
     models = {}
-    #model = sm.OLS(formula='pca_0 ~ x_republican+dummy_0+dummy_1',data=df).fit()
-    #print(model.summary())
-    #cov_type='cluster',cov_kwds={'groups':(df[['Circuit','year']])}
+
+    # Removing the Circuits where all the values are zero
+    X = X.loc[:, (X != 0).any(axis=0)]
+
     for yvar in yvars:
-        print("yvar : "+yvar)
+        print("Running OLS for : " + yvar)
         y = df[yvar]
-        #if normalize:
-        #    y = (y - y.mean()) / y.std()
-        print(type(yvar))
-        #X = sm.add_constant(X)
-        #model = LinearRegression()
-        #model.fit(X=X,y=y)
-        #print(model.coef_)
-        #print(model.fit_intercept)
-        #cov_type='cluster',cov_kwds={'groups':(df[['Circuit','year']])}
+        # cov_type='cluster',cov_kwds={'groups':(df[['Circuit','year']])}
         model = sm.OLS(y, X)
-        models[i] = model.fit(cov_type='cluster',cov_kwds={'groups':(df[['Circuit','year']])})
-        print(models[i].summary())
+        # model = sm.GLM(y, X,family=sm.families.Gamma())
+        models[i] = model.fit()  # cov_type='hc0'
+        print(models[i].summary(xname=include_list))
         i += 1
 
     if len(yvars) > 1:
         compare_and_print_statsmodels(models)
     return model
-
-
-def featureSelection2(df):
-    df.reset_index(drop=True, inplace=True)
-    X = df['newn_gram']
-    v = DictVectorizer(sparse=False)  # dictionay to dataframe
-    X_test = v.fit_transform(X)
-    X_array = X_test.copy()
-
-    # set the numebr of apperance to 1 for each case in order to count
-    # the number of articles for a token
-    X_array[X_array > 1] = 1
-
-    # if the tokens appear no more than 1 percent of the number of articles in
-    # this legal field, we delete them.
-    a = np.where(X_array.sum(axis=0) > int(0.01 * len(df)))
-    fea_index = a[0]
-    fea_name = np.asarray(v.get_feature_names())[fea_index]
-    fea_matrix = X_test[:, fea_index]
-    newdf = pd.DataFrame(fea_matrix, columns=fea_name)
-    y = df['panelvote']
-    X = newdf
-    names = fea_name.tolist()
-    rf = RandomForestRegressor()
-    rf.fit(X, y)
-    fealst = zip(map(lambda x: round(x, 4), rf.feature_importances_), names)
-
-    # By using RandomForest, we delete the tokens with score 0.
-    impfealst = [fea[1] for fea in fealst if fea[0] > 0]
-    impdf = newdf[impfealst]
-    impdf['panelvote'] = df['panelvote']
-    impdf['issue'] = df['issue']
-    impdf['field'] = df['field']
-    legalfield = impdf['field'].tolist()[0].replace('/', '')
-    impdf.to_csv('./field/' + legalfield + '.csv', index=False)
 
 
 def convert_textfile(model):
@@ -156,38 +129,34 @@ def test_stat_model(model, insample, outsample):
     y_actual = outsample[target]
     print('MSE: (outsample) ' + str(np.mean((ypred - y_actual)) ** 2))
 
+
 # We can use class sklearn.pipeline.Pipeline(steps)
-def feature_selection(df, target = lawvar, model = LassoCV()):
+def feature_selection(df, target=lawvar, model=LassoCV()):
     characteristics_cols = [col for col in list(df) if col.startswith('x_')]
+
     # characteristics_cols += [col for col in list(df) if col.startswith('e_x_')]
     # characteristics_cols += [col for col in list(df) if col.startswith('dummy_')]
-    features_selected_all_regres = set()
+
+    #characteristics_cols.extend(dp.get_lags_features(df, 1))
     X, y = df[characteristics_cols].fillna(0), df[target]
-    #Start here
-    # clf = LassoCV()
-    # Use ExtraTreesClassifier() for Random Forest
-    #model = ElasticNetCV(normalize=True,selection='random',max_iter=10000,tol=0.001)
-    #model = RandomForestRegressor(max_features='sqrt')
+
+    # model = ElasticNetCV(normalize=True,selection='random',max_iter=10000,tol=0.001)
+    # model = RandomForestRegressor(max_features='sqrt')
     sfm = SelectFromModel(model, threshold=-3)
     sfm.fit(X, y)
-    #print(model.feature_importances_)
-    #print(model.oob_prediction_)
 
     n_features = sfm.transform(X).shape[1]
 
-    # Reset the threshold till the number of features equals two.
+    # Reset the threshold till the number of features equals 5.
     # Note that the attribute can be set directly instead of repeatedly
     # fitting the metatransformer.
     while n_features > 5:
         sfm.threshold += 0.0001
         X_transform = sfm.transform(X)
         n_features = X_transform.shape[1]
-        #print(sfm.n_iter_)
-
 
     features_selected = [x for (x, y) in zip(characteristics_cols, sfm.get_support()) if y == True]
-    print('selected')
-    print(features_selected)
+    print("Features Selected: " + str(features_selected))
     return features_selected
 
 
@@ -206,21 +175,21 @@ def compare_and_print_statsmodels(estimators, indice=0):
         if len(estimators) > 0:
             for k, est in estimators.items():
                 data_dict["(" + str(i) + ")"] = est.summary2().tables[indice].iloc[:, 1::2].stack().values
-                coeff_with_err=[]
+                coeff_with_err = []
                 keys = []
-                #for attr in dir(est):
+                # for attr in dir(est):
                 #    print("obj.%s = %s" % (attr, getattr(est, attr)))
-                #print(type(est.params.values))
+                # print(type(est.params.values))
                 for i in range(len(est.params.values)):
                     if not est.params.keys()[i].lower().startswith("dummy") and \
                             not est.params.keys()[i].lower().startswith("e_"):
                         coeff_with_err.append(est.params.values[i])
-                        coeff_with_err.append("("+str(est.bse.values[i])+")")
-                        #coeff_with_err.append("(" + str(est.pvalues) + ")")
+                        coeff_with_err.append("(" + str(est.bse.values[i]) + ")")
+                        # coeff_with_err.append("(" + str(est.pvalues) + ")")
                         keys.append(est.params.keys()[i])
                         keys.append(" ")
-                        #keys.append(est.params.keys()[i]+"_p_value")
-                #coeff["(" + str(k) + ")"] = np.array(coeff_with_err)
+                        # keys.append(est.params.keys()[i]+"_p_value")
+                # coeff["(" + str(k) + ")"] = np.array(coeff_with_err)
                 coeff["(" + str(k) + ")"] = np.array(coeff_with_err)
                 keys = np.array(keys)
                 i = i + 1
@@ -230,7 +199,8 @@ def compare_and_print_statsmodels(estimators, indice=0):
             df2.index = keys
             tbl2 = SimpleTable(df2.values.tolist(), df2.columns.values.tolist(), df2.index.tolist(),
                                title="Coefficients")
-            tbl = SimpleTable(df.values.tolist(), df.columns.values.tolist(), index.tolist(), title="Regression Results")
+            tbl = SimpleTable(df.values.tolist(), df.columns.values.tolist(), index.tolist(),
+                              title="Regression Results")
             print(tbl)
             print(tbl2)
             df.index = index
@@ -252,6 +222,7 @@ def pca_on_text_features(df):
     pca.fit_transform(df)
     return pca.components_
 
+
 def pls_regression_on_text_features(df):
     '''
     :param df: High dimensional dataframe on which pca
@@ -263,3 +234,102 @@ def pls_regression_on_text_features(df):
     df = df.transpose()
     pls.fit_transform(df)
     return pls.components_
+
+
+def Grid_search_CV(X, run_level):
+    pipeline = Pipeline([
+        ('randomforestregressor', RandomForestRegressor()),
+        # ('AdaBoost', AdaBoostRegressor()),
+        # ('GradientBoosting', GradientBoostingRegressor())
+
+        # ('lassoCV', Lasso()),
+        # ('enetCV', ElasticNet())
+    ])
+
+    parameters = {
+        # 'lassoCV__alpha' : [10,1,0.1,0.01,0.001,0.0001,0.00001,0.000001],
+        # 'lassoCV__max_iter' : [10,100,1000],
+        # 'lassoCV__tol' : [0.0001,0.001,0.01],
+        # 'enetCV__l1_ratio' : [.01, .1,.5,.7,.9, .99, 1],
+        # 'enetCV__n_alphas' : [20,50,100],
+        'randomforestregressor__n_estimators': [10, 40, 50, 55, 75],
+        'randomforestregressor__max_features': ['auto', 'sqrt', 'log2'],
+        'randomforestregressor__max_depth': [1, 5, 10, 15, 20, 25],
+        # 'AdaBoost__n_estimators': [10, 40, 50, 55, 75],
+        # 'AdaBoost__loss': ['linear', 'square', 'exponential']
+
+    }
+
+    # parameters = {'n_estimators': [10, 50, 75], 'max_depth': [1, 5, 10, 15, 20, 25] , 'max_features' : ['auto','sqrt','log2']}
+
+    # rf_clf = RandomForestRegressor(random_state=42)
+
+    num_cores = multiprocessing.cpu_count()
+
+    grid_search = GridSearchCV(pipeline, parameters, n_jobs=num_cores)
+
+    print("Performing grid search...")
+    print("pipeline:", [name for name, _ in pipeline.steps])
+    print("parameters:")
+    print(parameters)
+
+    # print_log(gridclf.best_params_)
+    # print_log(gridclf.best_score_)
+
+    t0 = time()
+    del X['Circuit']
+    del X['year']
+    # del X['caseid']
+    Z = None
+    if run_level is level.panel:
+        Z = dp.read_panel_level_data()
+    if run_level is level.circuityear:
+        Z = dp.read_circuityear_level_data()
+
+    grid_search.fit(Z, X)
+    # print("done in %0.3fs" % (time() - t0))
+    print()
+
+    print("Best score: %0.3f" % grid_search.best_score_)
+    print("Best parameters set:")
+    best_parameters = grid_search.best_estimator_.get_params()
+    for param_name in sorted(parameters.keys()):
+        print("\t%s: %r" % (param_name, best_parameters[param_name]))
+
+
+def run_feature_selection_for_model(merged_df, Yvars, run_model=model.random_forest):
+    features_selected = None
+    if run_model is model.lasso:
+        if run_high_dimensional:
+            features_selected = feature_selection(merged_df,
+                                                  model=MultiTaskLasso(selection='cyclic',
+                                                                       max_iter=1e5,
+                                                                       tol=1e-4),
+                                                  target=Yvars)
+        else:
+            features_selected = feature_selection(merged_df,
+                                                  model=LassoCV(n_alphas=20,
+                                                                n_jobs=4,
+                                                                selection='cyclic',
+                                                                max_iter=1e5,
+                                                                tol=1e-4)
+                                                  )
+    elif run_model is model.random_forest:
+        features_selected = feature_selection(merged_df,
+                                              model=RandomForestRegressor(max_features='sqrt'),
+                                              target=Yvars)
+    elif run_model is model.elastic_net:
+        if run_high_dimensional:
+            features_selected = feature_selection(merged_df,
+                                                  model=MultiTaskElasticNetCV(),
+                                                  target=Yvars)
+        else:
+            features_selected = feature_selection(merged_df,
+                                                  model=ElasticNetCV(),
+                                                  target=Yvars)
+    elif run_model is model.logistic:
+        features_selected = feature_selection(merged_df,
+                                              model=LogisticRegression(),
+                                              target=Yvars)
+
+    return features_selected
