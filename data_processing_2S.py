@@ -67,17 +67,14 @@ def read_final_pollution_data():
 #######################
 # Lags and Leads
 #######################
-def use_lags_and_leads(df, y_cols, n_lags=0, n_leads=1):
+def use_lag_or_lead(df, y_cols, n_lags=0, n_leads=0):
     keys = ['Circuit', 'year']
-    df.sort_values(keys)
+    df.sort_values(keys, inplace=True)
     if n_lags > 0:
         for f in y_cols:
-            f_lag = f + '_t' + str(n_lags)
-            df[f_lag] = df.groupby('Circuit')[f].shift(n_lags)
-
-    if n_leads > 0:
+            df[f] = df.groupby('Circuit')[f].shift(n_lags)
+    elif n_leads > 0:
         for f in y_cols:
-            f_lead = f + '_f' + str(n_leads)
             df[f] = df.groupby('Circuit')[f].shift(-n_leads)
 
     return df
