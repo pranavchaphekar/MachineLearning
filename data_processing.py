@@ -493,7 +493,7 @@ def generate_pca_of_text_features(level, text_features):
     panel_data = read_panel_level_data()
     # text_features = pd.read_csv(text_features_file, low_memory=False, index_col=0)
     df_comb = None
-    if level is level.circuityear:
+    if level is db.level.circuityear:
         df_comb = text_features[['Circuit', 'year']]
     else:
         df_comb = text_features['caseid']
@@ -507,7 +507,7 @@ def generate_pca_of_text_features(level, text_features):
 
     pca_comp = pd.DataFrame(pca_comp)
     pca_comp.columns = col_names
-    if level is level.circuityear:
+    if level is db.level.circuityear:
         pca_comp['Circuit'] = df_comb['Circuit']
         pca_comp['year'] = df_comb['year']
         pca_comp.to_csv(db.text_features_lvl_circuityear)
@@ -576,7 +576,7 @@ def merge_text_features(df, level):
 
 def level_wise_lawvar(level):
     df = read_case_ids()
-    if level is level.circuityear:
+    if level is db.level.circuityear:
         sumFun = lambda x: np.sum(x)
         f = dict()
         cols = [col for col in list(df)]
@@ -584,7 +584,8 @@ def level_wise_lawvar(level):
         # for col in cols:
         #    f[col] = meanFun
         data = read_panel_level_data()
-        merged = level_wise_merge(data[['Circuit', 'year', 'caseid']], df, level)
+        merged = level_wise_merge(data[['Circuit', 'year', 'caseid']], df, db.level.panel)
+        del merged['caseid']
         df = merged.groupby(['Circuit', 'year'], as_index=False).agg(f)
     return df
 
@@ -621,3 +622,15 @@ def get_cols_not_included_in_1LS(X):
     return not_included
 
     # text_features_for_lawvar_cases()
+
+
+def get_expectation_col_names_for_features(features):
+    expectations = set()
+    for col in features:
+        if col.find("X") is -1:  # if not an interaction, interaction format a 'X' b
+            expec_col = "e_" + col
+            expectations.add(expec_col)
+        elif col.find("X") >= 0:
+            expectations.add('e_' + col.split('X')[0].strip())
+            expectations.add('e_' + col.split('X')[1].strip())
+    return list(expectations)
