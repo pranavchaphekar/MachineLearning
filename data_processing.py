@@ -85,8 +85,10 @@ def handpick_features_from_char_data(df):
 
     :return:
     """
-    df[db.features_to_use].to_csv(db.handpicked_char_data_path)
-    return df[db.features_to_use]
+    features = [col for col in list(df) if col.startswith('x_')]
+    features.extend(['Circuit', 'year', 'caseid', 'songername', 'dissentvote', 'month'])
+    df[features].to_csv(db.handpicked_char_data_path)
+    return df[features]
 
 
 ######################
@@ -114,7 +116,7 @@ def gen_interactions(main_df, df1, df2, df1_col_name, df2_col_name):
     :param df2_col_name:
     :return:
     """
-    name_of_dataframe = df1_col_name + ' X ' + df2_col_name
+    name_of_dataframe = df1_col_name + 'X' + df2_col_name
     main_df[name_of_dataframe] = df1 * df2
     return main_df
 
@@ -410,27 +412,68 @@ def group_on_circuit_year(df):
 #######################
 # Lags and Leads
 #######################
-def generate_lags_and_leads(features, n_lags=1, n_leads=1):
-    df = read_circuityear_level_data()
-    keys = ['Circuit', 'year']
-    df.sort_values(keys)
-    keys.append(db.lawvar)
-    keys.extend(features)
-    df = df[keys]
-    for i in range(n_lags):
-        for f in features:
-            f_lag = f + '_t' + str(i + 1)
-            df[f_lag] = df.groupby('Circuit')[f].shift(i + 1)
+def generate_lags_and_leads(n_lags=1, n_leads=1):
+    keys = ['caseid', 'Circuit', 'year', 'songername']
 
-    for i in range(n_leads):
-        for f in features:
-            f_lag = f + '_f' + str(i + 1)
-            df[f_lag] = df.groupby('Circuit')[f].shift(-(i + 1))
+    if not db.use_existing_files:
+        df_judge = read_judge_level_data()[keys]
 
-    df.to_csv(db.lags_leads_file)
+        df_text = pd.read_csv(db.text_features_file, low_memory=False)
+        new_cols = df_text.columns.values
+        new_cols[0] = 'caseid'
+        df_text.columns = new_cols
 
+        df_merged = pd.merge(df_judge, df_text, on='caseid')
+        # df_merged.sort_values(['year'], inplace=True)
+        # df_merged.to_csv('data/judge_level_citations.csv', index=False, header=True)
 
-# generate_lags_and_leads(ols_filter_col)
+        cols = [col for col in list(df_merged) if col not in keys]
+        sumFun = lambda x: x.sum()
+        f = {}
+        for col in cols:
+            f[col] = sumFun
+
+        df_grouped = df_merged.groupby(['Circuit', 'year', 'songername'], as_index=False).agg(f)
+        df_grouped.to_csv('data/judge_level_citations_grouped.csv', index=False)
+
+        df_grouped = pd.read_csv('data/judge_level_citations_grouped.csv', low_memory=False)
+
+        keys.remove('caseid')
+        df_grouped.sort_values('year', inplace=True)
+        df_with_citation_lags = df_grouped[keys]
+        for i in range(n_lags):
+            for col in list(df_grouped):
+                if col not in keys:
+                    cit_col = col + '_lag' + str(i+1)
+                    df_with_citation_lags[cit_col] = df_grouped.groupby('songername')[col].shift(i + 1)
+
+        cols = [col for col in list(df_with_citation_lags) if col not in keys]
+        sumFun = lambda x: x.sum()
+        f = {}
+        for col in cols:
+            f[col] = sumFun
+
+        df_with_citation_lags = df_with_citation_lags.groupby(['Circuit', 'year'], as_index=False).agg(f)
+        df_with_citation_lags.sort_values(['Circuit', 'year'], inplace=True)
+        df_with_citation_lags.to_csv('data/judge_level_citation_lags.csv', index=False)
+
+        df_with_citation_lags.fillna(0, inplace=True)
+        pca_comp = pca_on_text_features(
+            df_with_citation_lags[[col for col in list(df_with_citation_lags.columns) if col not in keys]])
+        col_names = []
+        for i in range(pca_comp.shape[1]):
+            col_names.append('pca_' + str(i) + '_lag1')
+
+        pca_comp = pd.DataFrame(pca_comp)
+        pca_comp.columns = col_names
+        pca_comp['Circuit'] = df_with_citation_lags['Circuit']
+        pca_comp['year'] = df_with_citation_lags['year']
+        pca_comp.to_csv('data/pca_lags.csv', index=False)
+        return pca_comp
+    else:
+        pca_comp = pd.read_csv('data/pca_lags.csv', low_memory=False)
+        return pca_comp
+
 
 #######################
 # Text Features
@@ -510,10 +553,10 @@ def generate_pca_of_text_features(level, text_features):
     if level is db.level.circuityear:
         pca_comp['Circuit'] = df_comb['Circuit']
         pca_comp['year'] = df_comb['year']
-        pca_comp.to_csv(db.text_features_lvl_circuityear)
+        pca_comp.to_csv(db.text_features_lvl_circuityear, index=False)
     else:
         pca_comp['caseid'] = df_comb['caseid']
-        pca_comp.to_csv(db.text_features_lvl_panel)
+        pca_comp.to_csv(db.text_features_lvl_panel, index=False)
 
     return pca_comp
 
@@ -540,7 +583,6 @@ def read_X(text_feature_lag):
     df = df[df.columns[~df.columns.str.contains('Unnamed:')]]
     x_features_to_include = []
     x_features_to_include.extend([col for col in list(df.columns) if '_t' not in col])
-    x_features_to_include.extend([col for col in list(df.columns) if col.startswith('pca_') and col.endswith('_t'+str(text_feature_lag))])
     df =df[x_features_to_include]
     df =df.dropna(how='any')
     return df
@@ -593,7 +635,7 @@ def level_wise_lawvar(level):
 def get_lags_features(df, lag_year=1):
     i = 0
     lag_features = list()
-    for feature in [col for col in list(df.columns) if '_t' + str(lag_year) in col]:
+    for feature in [col for col in list(df.columns) if '_lag' + str(lag_year) in col]:
         # lag_features.append(feature + '_t' + str(lag_year + 1))
         # df_clean = df.dropna(subset=lag_features)
         lag_features.append(feature)

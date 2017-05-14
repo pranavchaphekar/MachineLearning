@@ -7,6 +7,7 @@ from sklearn.ensemble import RandomForestRegressor
 from sklearn.linear_model import ElasticNetCV
 from sklearn.linear_model import LinearRegression
 import statsmodels.api as sm
+import statsmodels.formula.api as smf
 from sklearn.feature_selection import SelectFromModel
 from sklearn.linear_model import LassoCV
 from sklearn.linear_model import LogisticRegression
@@ -71,27 +72,31 @@ def fit_stat_model(df, filter_col, yvars=[lawvar], normalize=False, add_controls
 
     # Include in X the text feature lags if 'use_text_features_lag' is True
     if includetext_feature_lags:
-        l = [col for col in list(df) if col.startswith('pca_') and '_t' + str(text_feature_lag) in col]
+        l = [col for col in list(df) if col.startswith('pca_') and '_lag' + str(text_feature_lag) in col]
         final_cols += l
         include_list += l
     if use_expectations:
         final_cols.extend(list(expectations))
-    if use_dummies:
-        final_cols += [col for col in list(df) if col.startswith('dummy_')]
+    # if use_dummies:
+    #     final_cols += [col for col in list(df) if col.startswith('dummy_')]
     X = df[final_cols]
     i = 0
     models = {}
 
     # Removing the Circuits where all the values are zero
     X = X.loc[:, (X != 0).any(axis=0)]
+    # X = sm.add_constant(X)
+
+    RHS = '+'.join(list(X)) + '+ C(Circuit) + C(year)'
 
     for yvar in yvars:
         print("Running OLS for : " + yvar)
         y = df[yvar]
-        # cov_type='cluster',cov_kwds={'groups':(df[['Circuit','year']])}
-        model = sm.OLS(y, X)
+        eqn = yvar + ' ~ ' + RHS
+        print(eqn)
+        model = smf.ols(formula=eqn, data=df)
         # model = sm.GLM(y, X,family=sm.families.Gamma())
-        models[i] = model.fit()  # cov_type='hc0'
+        models[i] = model.fit(cov_type='cluster',cov_kwds={'groups':df['Circuit'], 'use_correction': True})  # cov_type='hc0'
         print(models[i].summary(xname=include_list))
         i += 1
 

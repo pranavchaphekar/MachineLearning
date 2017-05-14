@@ -94,10 +94,15 @@ def _run_regression_(X):
     else:
         Z = dp.read_panel_level_data()
 
+    pca_lags = dp.generate_lags_and_leads(n_lags=1)
+
+    Z = dp.level_wise_merge(Z, pca_lags, run_level)
+
     # Getting Column names for which 1st stage regression would run
     not_included = dp.get_cols_not_included_in_1LS(X=X)
     Xvars = [col for col in list(X) if col not in not_included]
 
+    del Z['govt_wins']
     # Merging X and Z
     merged_X_Z = dp.level_wise_merge(X, Z, run_level)
 
@@ -179,9 +184,15 @@ def _generate_plots_():
         sys.stdout.write("--false\n")
 
 
+def _merge_with_legal_data_():
+    df = dp.read_handpicked_features_data_into_dataframe()
+    dp.merge_char_with_legal_data(df)
+
+
 def pipeline():
     _filter_data_()
     _handpick_features_from_filtered_data_()
+    _merge_with_legal_data_()
     _generate_level_files_()
     _generate_expectations_at_circuityear_level_()
     X = _generate_X_()
